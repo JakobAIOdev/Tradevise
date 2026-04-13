@@ -26,6 +26,7 @@ func main() {
     log.Println("Tradevise Worker starting...")
 
     go jobs.RunLiveTicker(rdb, sym, conv)
+	go jobs.RunBootstrap(rdb, pool, sym)
 
     select{}
 }

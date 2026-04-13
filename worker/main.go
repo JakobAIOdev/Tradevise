@@ -4,26 +4,28 @@ import (
 	"log"
 
 	"github.com/robfig/cron/v3"
+	"gitlab.ct.fh-salzburg.ac.at/fhs52920/tradevise/app/worker/config"
 	converter "gitlab.ct.fh-salzburg.ac.at/fhs52920/tradevise/app/worker/currency"
-	"gitlab.ct.fh-salzburg.ac.at/fhs52920/tradevise/app/worker/scraper"
+	"gitlab.ct.fh-salzburg.ac.at/fhs52920/tradevise/app/worker/db"
+	"gitlab.ct.fh-salzburg.ac.at/fhs52920/tradevise/app/worker/jobs"
+	redisclient "gitlab.ct.fh-salzburg.ac.at/fhs52920/tradevise/app/worker/redis"
+	"gitlab.ct.fh-salzburg.ac.at/fhs52920/tradevise/app/worker/store"
 )
 
 func main() {
-	conv := converter.New()
+    cfg  := config.Load()
+    rdb  := redisclient.New(cfg)
+    pool := db.New(cfg)
+    sym  := store.New(pool)
+    conv := converter.New()
 
-	// daily chronjob refetch at 03:00 UTC 
-	c := cron.New()
-	c.AddFunc("0 3 * * *", func() {
-		conv.Reload()
-	})
-	c.Start()
+    c := cron.New()
+    c.AddFunc("0 3 * * *", func() { conv.Reload() })
+    c.Start()
 
-	
-    price, ts, err := scraper.FetchLivePrice("AAPL")
-    if err != nil {
-        log.Fatal(err)
-    }
+    log.Println("Tradevise Worker starting...")
 
-	priceEUR := conv.ToEUR(price, "USD")
-    log.Printf("AAPL: %.2f€ at %d", priceEUR, ts)
+    go jobs.RunLiveTicker(rdb, sym, conv)
+
+    select{}
 }

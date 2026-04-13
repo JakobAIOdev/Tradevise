@@ -17,10 +17,10 @@ export default function Sidebar({ collapsed }: SidebarProps) {
   return (
     <aside
       className={`flex flex-col h-screen bg-surface border-r border-border
-      transition-all duration-200 shrink-0 py-25
+      transition-[width,padding,background-color,border-color] duration-200 ease-out shrink-0 py-25
       ${collapsed ? 'w-64 px-10' : 'w-[240px] px-15'}`}
     >
-      <p className="font-bold text-[32px] tracking-[-1%] text-text text-center justify-center ">
+      <p className="font-bold text-[32px] tracking-[-1%] text-text text-center justify-center transition-colors duration-200 ease-out">
         {collapsed ? 'T' : 'Tradevise'}
       </p>
 

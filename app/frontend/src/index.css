@@ -1,9 +1,6 @@
 @import "@fontsource-variable/space-grotesk";
 @import "tailwindcss";
 
-@import "@fontsource-variable/space-grotesk";
-@import "tailwindcss";
-
 @theme {
     /* COLORS – Light (Defaults) */
     --color-bg: #F9FAFB;
@@ -57,4 +54,17 @@
     --color-text: #F1F3F5;
     --color-muted: #8B95A3;
     --color-border: #2A3040;
+}
+
+:root {
+    color-scheme: light;
+}
+
+[data-theme="dark"] {
+    color-scheme: dark;
+}
+
+body {
+    background: var(--color-bg);
+    color: var(--color-text);
 }

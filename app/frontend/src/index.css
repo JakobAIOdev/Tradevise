@@ -10,11 +10,11 @@
     --color-muted: #6B7280;
     --color-border: #E5E7EB;
 
-    --color-bullish: #00D084;
-    --color-bearish: #FF5050;
+    --color-bullish: #01AF44;
+    --color-bearish: #FF3A3A;
     --color-error: #EF4444;
-    --color-warning: #F59E0B;
-    --color-success: #10B981;
+    --color-warning: #F6D7A3;
+    --color-success: #14DD9A;
 
     /* TYPOGRAPHY */
     --font-sans: 'Space Grotesk Variable', system-ui, sans-serif;
@@ -54,6 +54,13 @@
     --color-text: #F1F3F5;
     --color-muted: #8B95A3;
     --color-border: #2A3040;
+
+    --color-bullish: #00D06B;
+    --color-bearish: #FF4D4D;
+    --color-error: #EF4444;
+    --color-warning: #F6D7A3;
+    --color-success: #10B981;
+
 }
 
 :root {

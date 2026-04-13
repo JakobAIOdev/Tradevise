@@ -22,9 +22,9 @@ function App() {
         <Route element={<DashboardLayout />}>
           <Route path="/home" element={<HomePage />} />
           <Route path="/portfolio" element={<PortfolioPage />} />
-          <Route path="/search" element={<DiscoverPage />} />
+          <Route path="/discover" element={<DiscoverPage />} />
           <Route path="/stock/:ticker" element={<StockDetailPage />} />
-          <Route path="/ranked" element={<RankedPage />} />
+          <Route path="/ranking" element={<RankedPage />} />
           <Route path="/groups" element={<GroupPage />} />
         </Route>
       </Routes>

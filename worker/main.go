@@ -28,6 +28,7 @@ func main() {
     go jobs.RunLiveTicker(rdb, sym, conv)
 	go jobs.RunBootstrap(rdb, pool, sym)
 	go jobs.RunIntradaySnap(pool, sym)
+	go jobs.RunWeeklyClose(pool, sym)
 
     select{}
 }

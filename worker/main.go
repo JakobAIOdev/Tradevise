@@ -27,6 +27,7 @@ func main() {
 
     go jobs.RunLiveTicker(rdb, sym, conv)
 	go jobs.RunBootstrap(rdb, pool, sym)
+	go jobs.RunIntradaySnap(pool, sym)
 
     select{}
 }

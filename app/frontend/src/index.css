@@ -1,32 +1,17 @@
 @import "@fontsource-variable/space-grotesk";
 @import "tailwindcss";
 
-:root {
-    --tv-bg: #F9FAFB;
-    --tv-surface: #FFFFFF;
-    --tv-surface-hover: #F3F4F6;
-    --tv-text: #1A2235;
-    --tv-muted: #6B7280;
-    --tv-border: #E5E7EB;
-}
-
-[data-theme="dark"] {
-    --tv-bg: #0D0F14;
-    --tv-surface: #161B26;
-    --tv-surface-hover: #1E2536;
-    --tv-text: #F1F3F5;
-    --tv-muted: #8B95A3;
-    --tv-border: #2A3040;
-}
+@import "@fontsource-variable/space-grotesk";
+@import "tailwindcss";
 
 @theme {
-    /* COLORS */
-    --color-bg: var(--tv-bg);
-    --color-surface: var(--tv-surface);
-    --color-surface-hover: var(--tv-surface-hover);
-    --color-text: var(--tv-text);
-    --color-muted: var(--tv-muted);
-    --color-border: var(--tv-border);
+    /* COLORS – Light (Defaults) */
+    --color-bg: #F9FAFB;
+    --color-surface: #FFFFFF;
+    --color-surface-hover: #F3F4F6;
+    --color-text: #1A2235;
+    --color-muted: #6B7280;
+    --color-border: #E5E7EB;
 
     --color-bullish: #00D084;
     --color-bearish: #FF5050;
@@ -34,57 +19,42 @@
     --color-warning: #F59E0B;
     --color-success: #10B981;
 
-    /* TYPOGRAPHY – Desktop (mobile via Breakpoint) */
+    /* TYPOGRAPHY */
     --font-sans: 'Space Grotesk Variable', system-ui, sans-serif;
 
     --text-h1: 3rem;
-    /* 48px */
     --text-h2: 2rem;
-    /* 32px */
     --text-h3: 1.5rem;
-    /* 24px */
     --text-body: 1.125rem;
-    /* 18px */
     --text-small: 0.875rem;
-    /* 14px */
-
-    /* TYPOGRAPHY – Mobile */
     --text-h1-mobile: 2rem;
-    /* 32px */
     --text-h2-mobile: 1.625rem;
-    /* 26px */
     --text-h3-mobile: 1.25rem;
-    /* 20px */
     --text-body-mobile: 1rem;
-    /* 16px */
     --text-small-mobile: 0.75rem;
-    /* 12px */
 
     /* SPACING – Desktop */
     --spacing-10: 0.625rem;
-    /* 10px */
     --spacing-15: 0.9375rem;
-    /* 15px */
     --spacing-25: 1.5625rem;
-    /* 25px */
     --spacing-40: 2.5rem;
-    /* 40px */
     --spacing-60: 3.75rem;
-    /* 60px */
     --spacing-80: 5rem;
-    /* 80px */
 
     /* SPACING – Mobile */
     --spacing-8: 0.5rem;
-    /*  8px */
     --spacing-12: 0.75rem;
-    /* 12px */
     --spacing-18: 1.125rem;
-    /* 18px */
     --spacing-32: 2rem;
-    /* 32px */
     --spacing-48: 3rem;
-    /* 48px */
     --spacing-64: 4rem;
-    /* 64px */
+}
+
+[data-theme="dark"] {
+    --color-bg: #0D0F14;
+    --color-surface: #161B26;
+    --color-surface-hover: #1E2536;
+    --color-text: #F1F3F5;
+    --color-muted: #8B95A3;
+    --color-border: #2A3040;
 }

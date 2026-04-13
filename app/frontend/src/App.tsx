@@ -1,6 +1,7 @@
 import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import LandingPage from './pages/LandingPage'
 import LoginPage from './pages/LoginPage'
+import HomePage from './pages/HomePage'
 import PortfolioPage from './pages/PortfolioPage'
 import DiscoverPage from './pages/DiscoverPage'
 import StockDetailPage from './pages/StockDetailPage'
@@ -19,6 +20,7 @@ function App() {
         </Route>
 
         <Route element={<DashboardLayout />}>
+          <Route path="/home" element={<HomePage />} />
           <Route path="/portfolio" element={<PortfolioPage />} />
           <Route path="/search" element={<DiscoverPage />} />
           <Route path="/stock/:ticker" element={<StockDetailPage />} />

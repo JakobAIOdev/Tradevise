@@ -1,3 +1,4 @@
+@import "@fontsource-variable/space-grotesk";
 @import "tailwindcss";
 
 :root {
@@ -34,7 +35,7 @@
     --color-success: #10B981;
 
     /* TYPOGRAPHY – Desktop (mobile via Breakpoint) */
-    --font-sans: 'Inter', system-ui, sans-serif;
+    --font-sans: 'Space Grotesk Variable', system-ui, sans-serif;
 
     --text-h1: 3rem;
     /* 48px */

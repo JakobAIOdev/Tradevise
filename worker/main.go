@@ -29,6 +29,7 @@ func main() {
 	go jobs.RunBootstrap(rdb, pool, sym)
 	go jobs.RunIntradaySnap(pool, sym)
 	go jobs.RunWeeklyClose(pool, sym)
+	go jobs.RunCleanup(pool)
 
     select{}
 }

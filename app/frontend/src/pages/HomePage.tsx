@@ -1,6 +1,7 @@
 import StatCard from '../components/StatCard'
 import { Wallet, TrendingUp, BarChart2 } from 'lucide-react'
 import { getTrend } from '../utils/trend'
+import PageTitle from '../components/PageTitle'
 
 const todayChange = 97.04
 const totalValue = 9524.64
@@ -9,7 +10,7 @@ const percentage = (todayChange / totalValue) * 100
 export default function HomePage() {
   return (
     <>
-      <div>HomePage</div>
+      <PageTitle title="Home" />
       <div className="flex gap-25">
         <StatCard
           icon={TrendingUp}

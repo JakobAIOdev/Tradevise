@@ -11,7 +11,7 @@ export default function DashboardLayout() {
       <Sidebar collapsed={collapsed} />
       <div className="flex flex-col flex-1 overflow-hidden">
         <Topbar onToggle={() => setCollapsed(!collapsed)} />
-        <main className="flex-1 overflow-y-auto p-25 md:p-40 transition-colors duration-200 ease-out">
+        <main className="flex-1 overflow-y-auto pl-12.5 pt-40 md:p-40 transition-colors duration-200 ease-out">
           <Outlet />
         </main>
       </div>

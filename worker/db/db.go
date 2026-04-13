@@ -57,12 +57,13 @@ func UpsertWeekly(pool *pgxpool.Pool, symbol string, points []model.PricePoint) 
 
 func SetSymbolDone(pool *pgxpool.Pool, symbol, currency, name string) error {
     _, err := pool.Exec(context.Background(),
-        `UPDATE tracked_symbols
+        `INSERT INTO tracked_symbols (symbol, currency, name, bootstrap_status, bootstrapped_at)
+         VALUES ($1, $2, $3, 'DONE', NOW())
+         ON CONFLICT (symbol) DO UPDATE
          SET bootstrap_status = 'DONE',
              currency = $2,
              name = $3,
-             bootstrapped_at = NOW()
-         WHERE symbol = $1`,
+             bootstrapped_at = NOW()`,
         symbol, currency, name,
     )
     return err

@@ -1,6 +1,11 @@
 package config
 
-import "os"
+import (
+	"log"
+	"os"
+
+	"github.com/joho/godotenv"
+)
 
 type Config struct {
     RedisURL    string
@@ -8,9 +13,13 @@ type Config struct {
 }
 
 func Load() *Config {
+    if err := godotenv.Load(); err != nil {
+        log.Println("config: no .env file found")
+    }
+
     return &Config{
         RedisURL:    getEnv("REDIS_URL", "redis://localhost:6379"),
-        DatabaseURL: getEnv("DATABASE_URL", "postgres://tradevise:secret@localhost:5432/tradevise"),
+        DatabaseURL: getEnv("DATABASE_URL", "postgres://tradevise:secret@localhost:5432/tradevise?sslmode=disable"),
     }
 }
 

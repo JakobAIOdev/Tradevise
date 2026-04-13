@@ -9,26 +9,41 @@ import RankedPage from './pages/RankedPage'
 import GroupPage from './pages/GroupPage'
 import PublicLayout from './layouts/PublicLayout'
 import DashboardLayout from './layouts/DashboardLayout'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { AuthError } from './lib/api'
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: (failureCount, error) => {
+        if (error instanceof AuthError) return false
+        return failureCount < 3
+      },
+    },
+  },
+})
 
 function App() {
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route element={<PublicLayout />}>
-          <Route path="/" element={<LandingPage />} />
-          <Route path="/login" element={<LoginPage />} />
-        </Route>
+    <QueryClientProvider client={queryClient}>
+      <BrowserRouter>
+        <Routes>
+          <Route element={<PublicLayout />}>
+            <Route path="/" element={<LandingPage />} />
+            <Route path="/login" element={<LoginPage />} />
+          </Route>
 
-        <Route element={<DashboardLayout />}>
-          <Route path="/home" element={<HomePage />} />
-          <Route path="/portfolio" element={<PortfolioPage />} />
-          <Route path="/discover" element={<DiscoverPage />} />
-          <Route path="/stock/:ticker" element={<StockDetailPage />} />
-          <Route path="/ranking" element={<RankedPage />} />
-          <Route path="/groups" element={<GroupPage />} />
-        </Route>
-      </Routes>
-    </BrowserRouter>
+          <Route element={<DashboardLayout />}>
+            <Route path="/home" element={<HomePage />} />
+            <Route path="/portfolio" element={<PortfolioPage />} />
+            <Route path="/discover" element={<DiscoverPage />} />
+            <Route path="/stock/:ticker" element={<StockDetailPage />} />
+            <Route path="/ranking" element={<RankedPage />} />
+            <Route path="/groups" element={<GroupPage />} />
+          </Route>
+        </Routes>
+      </BrowserRouter>
+    </QueryClientProvider>
   )
 }
 

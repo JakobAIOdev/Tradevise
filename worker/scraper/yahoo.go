@@ -168,3 +168,30 @@ func FetchBootstrapWeekly(symbol string) ([]model.PricePoint, string, error) {
 
     return points, result.Meta.Currency, nil
 }
+
+func FetchMeta(symbol string) (model.StockMeta, error) {
+    url := fmt.Sprintf(
+        "https://query1.finance.yahoo.com/v8/finance/chart/%s?interval=1m&range=1d",
+        symbol,
+    )
+
+    r, err := fetch(context.Background(), url)
+    if err != nil {
+        return model.StockMeta{}, err
+    }
+
+    m := r.Chart.Result[0].Meta
+
+    return model.StockMeta{
+        Symbol:           m.Symbol,
+        Name:             m.LongName,
+        Currency:         m.Currency,
+        Exchange:         m.FullExchangeName,
+        PreviousClose:    m.ChartPreviousClose,
+        DayHigh:          m.RegularMarketDayHigh,
+        DayLow:           m.RegularMarketDayLow,
+        FiftyTwoWeekHigh: m.FiftyTwoWeekHigh,
+        FiftyTwoWeekLow:  m.FiftyTwoWeekLow,
+        Volume:           m.RegularMarketVolume,
+    }, nil
+}

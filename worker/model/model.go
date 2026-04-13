@@ -30,6 +30,19 @@ type LivePriceEvent struct {
     BootstrapDone bool    `json:"bootstrapDone,omitempty"`
 }
 
+type StockMeta struct {
+    Symbol           string  `json:"symbol"`
+    Name             string  `json:"name"`
+    Currency         string  `json:"currency"`
+    Exchange         string  `json:"exchange"`
+    PreviousClose    float64 `json:"previousClose"`
+    DayHigh          float64 `json:"dayHigh"`
+    DayLow           float64 `json:"dayLow"`
+    FiftyTwoWeekHigh float64 `json:"fiftyTwoWeekHigh"`
+    FiftyTwoWeekLow  float64 `json:"fiftyTwoWeekLow"`
+    Volume           int     `json:"volume"`
+}
+
 // Scraper intern
 type PricePoint struct {
     Time  int64

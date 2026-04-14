@@ -7,7 +7,7 @@ export default function StockCard({ name, ticker, change, logo }: Stock) {
   const positive = change >= 0
 
   return (
-    <Link to={`/stock/${ticker}`}>
+    <Link to={`/detail/${ticker}`}>
       <div className="flex items-center gap-15 bg-surface border border-border rounded-xl p-15 cursor-pointer hover:bg-surface-hover transition-colors">
         <StockLogo src={logo} ticker={ticker} />
         <div className="flex-1 min-w-0">

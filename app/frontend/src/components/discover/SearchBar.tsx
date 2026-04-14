@@ -58,7 +58,7 @@ export function SearchBar({ className = '', size = 'default' }: SearchBarProps) 
 
   const handleSelect = useCallback(
     (symbol: string) => {
-      navigate(`/stock/${encodeURIComponent(symbol)}`)
+      navigate(`/detail/${encodeURIComponent(symbol)}`)
       setInput('')
       setIsOpen(false)
       setActiveIndex(-1)

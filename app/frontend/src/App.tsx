@@ -37,7 +37,7 @@ function App() {
             <Route path="/home" element={<HomePage />} />
             <Route path="/portfolio" element={<PortfolioPage />} />
             <Route path="/discover" element={<DiscoverPage />} />
-            <Route path="/stock/:ticker" element={<StockDetailPage />} />
+            <Route path="/detail/:ticker" element={<StockDetailPage />} />
             <Route path="/ranking" element={<RankedPage />} />
             <Route path="/groups" element={<GroupPage />} />
           </Route>

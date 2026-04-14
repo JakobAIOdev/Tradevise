@@ -10,6 +10,6 @@ import { RefreshTokenGuard } from './guards/refresh-token.guard.js';
   imports: [JwtModule.register({}), PrismaModule],
   controllers: [AuthController],
   providers: [AuthService, AccessTokenGuard, RefreshTokenGuard],
-  exports: [AccessTokenGuard, RefreshTokenGuard],
+  exports: [JwtModule, AccessTokenGuard, RefreshTokenGuard],
 })
 export class AuthModule {}

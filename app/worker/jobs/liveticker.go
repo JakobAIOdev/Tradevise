@@ -14,57 +14,79 @@ import (
 )
 
 func RunLiveTicker(rdb *goredis.Client, sym *store.SymbolStore, conv *converter.CurrencyConverter) {
-    log.Println("[LiveTicker] started")
-    ticker := time.NewTicker(30 * time.Second)
+	log.Println("[LiveTicker] started")
+	ticker := time.NewTicker(30 * time.Second)
+	go runLiveTickerFetchNow(rdb, sym, conv)
 
-    for range ticker.C {
-        symbols, err := rdb.SMembers(context.Background(), "active:symbols").Result()
-        if err != nil {
-            log.Printf("[LiveTicker] failed to get active symbols: %s", err)
-            continue
-        }
-        sym.SetActive(symbols)
+	for range ticker.C {
+		symbols, err := rdb.SMembers(context.Background(), "active:symbols").Result()
+		if err != nil {
+			log.Printf("[LiveTicker] failed to get active symbols: %s", err)
+			continue
+		}
+		sym.SetActive(symbols)
 
-        active := sym.GetActive()
-        if len(active) == 0 {
-            log.Println("[LiveTicker] no active symbols, skipping")
-            continue
-        }
+		active := sym.GetActive()
+		if len(active) == 0 {
+			log.Println("[LiveTicker] no active symbols, skipping")
+			continue
+		}
 
-        log.Printf("[LiveTicker] fetching %d active symbols", len(active))
+		log.Printf("[LiveTicker] fetching %d active symbols", len(active))
 
-        for _, symbol := range active {
-            price, ts, err := scraper.FetchLivePrice(symbol)
-            if err != nil {
-                log.Printf("[LiveTicker] fetch failed for %s: %s", symbol, err)
-                time.Sleep(300 * time.Millisecond)
-                continue
-            }
+		for _, symbol := range active {
+			if err := publishLivePrice(rdb, sym, conv, symbol); err != nil {
+				log.Printf("[LiveTicker] fetch failed for %s: %s", symbol, err)
+				time.Sleep(300 * time.Millisecond)
+				continue
+			}
+			time.Sleep(300 * time.Millisecond)
+		}
+	}
+}
 
-            tracked := sym.GetTracked()
-            currency := tracked[symbol]
+func runLiveTickerFetchNow(rdb *goredis.Client, sym *store.SymbolStore, conv *converter.CurrencyConverter) {
+	sub := rdb.Subscribe(context.Background(), "stocklive:fetchnow")
+	ch := sub.Channel()
 
-            priceEUR := conv.ToEUR(price, currency)
+	for msg := range ch {
+		symbol := msg.Payload
+		if symbol == "" {
+			continue
+		}
 
-            event := model.LivePriceEvent{
-                Symbol: symbol,
-                Price:  priceEUR,
-                Time:   ts,
-            }
+		log.Printf("[LiveTicker] immediate fetch requested for %s", symbol)
+		if err := publishLivePrice(rdb, sym, conv, symbol); err != nil {
+			log.Printf("[LiveTicker] immediate fetch failed for %s: %s", symbol, err)
+		}
+	}
+}
 
-            payload, err := json.Marshal(event)
-            if err != nil {
-                log.Printf("[LiveTicker] marshal failed for %s: %s", symbol, err)
-                continue
-            }
+func publishLivePrice(rdb *goredis.Client, sym *store.SymbolStore, conv *converter.CurrencyConverter, symbol string) error {
+	price, ts, err := scraper.FetchLivePrice(symbol)
+	if err != nil {
+		return err
+	}
 
-            if err := rdb.Publish(context.Background(), "stocklive:"+symbol, payload).Err(); err != nil {
-                log.Printf("[LiveTicker] publish failed for %s: %s", symbol, err)
-            } else {
-                log.Printf("[LiveTicker] published %s → %.2f EUR", symbol, priceEUR)
-            }
+	tracked := sym.GetTracked()
+	currency := tracked[symbol]
+	priceEUR := conv.ToEUR(price, currency)
 
-            time.Sleep(300 * time.Millisecond)
-        }
-    }
+	event := model.LivePriceEvent{
+		Symbol: symbol,
+		Price:  priceEUR,
+		Time:   ts,
+	}
+
+	payload, err := json.Marshal(event)
+	if err != nil {
+		return err
+	}
+
+	if err := rdb.Publish(context.Background(), "stocklive:"+symbol, payload).Err(); err != nil {
+		return err
+	}
+
+	log.Printf("[LiveTicker] published %s → %.2f EUR", symbol, priceEUR)
+	return nil
 }

@@ -57,10 +57,16 @@ export class AccessTokenGuard implements CanActivate {
 
   private extractBearerToken(request: Request): string | null {
     const authorizationHeader = request.get('authorization');
-    if (!authorizationHeader) return null;
+    if (authorizationHeader) {
+      const [type, token] = authorizationHeader.split(' ');
+      if (type === 'Bearer' && token) return token;
+    }
 
-    const [type, token] = authorizationHeader.split(' ');
+    const queryToken = request.query['access_token'];
+    if (typeof queryToken === 'string' && queryToken) {
+      return queryToken;
+    }
 
-    return type === 'Bearer' ? token : null;
+    return null;
   }
 }

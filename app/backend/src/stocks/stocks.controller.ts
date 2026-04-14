@@ -1,12 +1,24 @@
-import { Controller, Get, Query } from '@nestjs/common';
+import { Controller, Get, Param, Query, Sse, UseGuards } from '@nestjs/common';
+import { AccessTokenGuard } from '../auth/guards/access-token.guard.js';
 import { StocksService } from './stocks.service.js';
 
 @Controller('stocks')
+@UseGuards(AccessTokenGuard)
 export class StocksController {
   constructor(private stocksService: StocksService) {}
 
   @Get('search')
   search(@Query('q') query = '') {
     return this.stocksService.search(query);
+  }
+
+  @Get(':ticker/chart')
+  chart(@Param('ticker') ticker: string, @Query('range') range = '1D') {
+    return this.stocksService.getChartHistory(ticker, range);
+  }
+
+  @Sse(':ticker/live')
+  live(@Param('ticker') ticker: string) {
+    return this.stocksService.streamLivePrice(ticker);
   }
 }

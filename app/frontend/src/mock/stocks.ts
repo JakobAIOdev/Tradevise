@@ -1,6 +1,21 @@
 import type { Stock } from '../Types'
 
-const logo = (ticker: string) => `https://api.elbstream.com/logos/symbol/${ticker}`
+const YAHOO_LOGOS: Record<string, string> = {
+  AAPL: 'https://s.yimg.com/lb/brands/150x150_apple.png',
+  TSLA: 'https://s.yimg.com/lb/brands/150x150_tesla.png',
+  MSFT: 'https://s.yimg.com/lb/brands/150x150_microsoft.png',
+  AMZN: 'https://s.yimg.com/lb/brands/150x150_amazon.png',
+  NVDA: 'https://s.yimg.com/lb/brands/150x150_nvidia.png',
+  GOOGL: 'https://s.yimg.com/lb/brands/150x150_google.png',
+  BTC: 'https://s2.coinmarketcap.com/static/img/coins/64x64/1.png',
+  ETH: 'https://s2.coinmarketcap.com/static/img/coins/64x64/1027.png',
+  SOL: 'https://s2.coinmarketcap.com/static/img/coins/64x64/5426.png',
+  ADA: 'https://s2.coinmarketcap.com/static/img/coins/64x64/2010.png',
+  XRP: 'https://s2.coinmarketcap.com/static/img/coins/64x64/52.png',
+  DOGE: 'https://s2.coinmarketcap.com/static/img/coins/64x64/74.png',
+}
+
+const logo = (ticker: string) => YAHOO_LOGOS[ticker]
 
 export const MOCK_STOCKS: Stock[] = [
   { name: 'Apple Inc.', ticker: 'AAPL', change: 1.23, logo: logo('AAPL') },

@@ -4,3 +4,10 @@ export interface Stock {
   change: number
   logo: string
 }
+
+export type StockSuggestion = {
+  symbol: string
+  name: string
+  type: 'STOCK' | 'ETF' | 'CRYPTO'
+  logoUrl: string | null
+}

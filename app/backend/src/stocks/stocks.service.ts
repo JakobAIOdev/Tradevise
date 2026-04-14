@@ -5,7 +5,7 @@ import {
   MessageEvent,
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
-import { Observable } from 'rxjs';
+import { Observable, type Subscriber } from 'rxjs';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { RedisService } from '../redis/redis.service.js';
 
@@ -19,6 +19,7 @@ type YahooQuote = {
   shortname?: string;
   longname?: string;
   logoUrl?: string;
+  exchange?: string;
 };
 
 export type StockSuggestion = {
@@ -74,11 +75,32 @@ type TrackedSymbolRow = {
   bootstrap_status: string | null;
 };
 
-const QUOTE_TYPE_LABELS = {
-  EQUITY: 'STOCK',
-  ETF: 'ETF',
-  CRYPTOCURRENCY: 'CRYPTO',
-} as const;
+type LiveSubscription = {
+  symbol: string;
+  channel: string;
+  onMessage: (message: string) => void;
+};
+
+const XETRA_SYMBOL_SUFFIX = '.DE';
+const GERMAN_EXCHANGE_SUFFIXES = new Set([
+  '.BE',
+  '.BM',
+  '.DU',
+  '.F',
+  '.HA',
+  '.HM',
+  '.MU',
+  '.SG',
+]);
+const GERMAN_YAHOO_EXCHANGES = new Set([
+  'BER',
+  'DUS',
+  'FRA',
+  'HAM',
+  'HAN',
+  'MUN',
+  'STU',
+]);
 
 const DISCOVER_STOCKS: DiscoverStockDefinition[] = [
   {
@@ -113,10 +135,61 @@ const DISCOVER_STOCKS: DiscoverStockDefinition[] = [
   },
 ];
 
-type SupportedQuoteType = keyof typeof QUOTE_TYPE_LABELS;
+const CHART_RANGES = ['1D', '1W', '1M', '1Y', 'ALL'] as const;
 
-function isSupportedQuoteType(value: string): value is SupportedQuoteType {
-  return value in QUOTE_TYPE_LABELS;
+function normalizeSymbol(symbol: string): string {
+  return symbol.trim().toUpperCase();
+}
+
+function getSymbolSuffix(symbol: string): string | null {
+  const suffixStart = symbol.lastIndexOf('.');
+  if (suffixStart === -1 || suffixStart === symbol.length - 1) return null;
+
+  return symbol.slice(suffixStart);
+}
+
+function replaceSymbolSuffix(symbol: string, suffix: string): string {
+  const suffixStart = symbol.lastIndexOf('.');
+  if (suffixStart === -1) return `${symbol}${suffix}`;
+
+  return `${symbol.slice(0, suffixStart)}${suffix}`;
+}
+
+function hasValidYahooSymbolChars(symbol: string): boolean {
+  return (
+    symbol.length > XETRA_SYMBOL_SUFFIX.length && /^[A-Z0-9.\-]+$/.test(symbol)
+  );
+}
+
+function isXetraSymbol(symbol: string): boolean {
+  const normalizedSymbol = normalizeSymbol(symbol);
+  return (
+    hasValidYahooSymbolChars(normalizedSymbol) &&
+    getSymbolSuffix(normalizedSymbol) === XETRA_SYMBOL_SUFFIX
+  );
+}
+
+function toXetraSymbol(quote: YahooQuote): string | null {
+  if (typeof quote.symbol !== 'string' || quote.quoteType !== 'EQUITY') {
+    return null;
+  }
+
+  const symbol = normalizeSymbol(quote.symbol);
+  if (isXetraSymbol(symbol)) {
+    return symbol;
+  }
+
+  const exchange = quote.exchange?.trim().toUpperCase();
+  const suffix = getSymbolSuffix(symbol);
+  if (
+    suffix &&
+    GERMAN_EXCHANGE_SUFFIXES.has(suffix) &&
+    (!exchange || GERMAN_YAHOO_EXCHANGES.has(exchange))
+  ) {
+    return replaceSymbolSuffix(symbol, XETRA_SYMBOL_SUFFIX);
+  }
+
+  return null;
 }
 
 function buildFallbackLogoUrl(symbol: string): string {
@@ -137,11 +210,11 @@ export class StocksService {
     const url = new URL('https://query1.finance.yahoo.com/v1/finance/search');
     url.search = new URLSearchParams({
       q: trimmedQuery,
-      quotesCount: '8',
+      quotesCount: '25',
       newsCount: '0',
       enableLogoUrl: 'true',
-      lang: 'en-US',
-      region: 'US',
+      lang: 'de-DE',
+      region: 'DE',
     }).toString();
 
     const response = await fetch(url, {
@@ -158,128 +231,83 @@ export class StocksService {
     const data = (await response.json()) as YahooSearchResponse;
     const quotes = data.quotes ?? [];
 
-    return quotes
-      .filter(
-        (
-          quote,
-        ): quote is YahooQuote & {
-          symbol: string;
-          quoteType: SupportedQuoteType;
-        } =>
-          typeof quote.symbol === 'string' &&
-          typeof quote.quoteType === 'string' &&
-          isSupportedQuoteType(quote.quoteType),
-      )
-      .map((quote) => ({
-        symbol: quote.symbol,
+    const suggestions = new Map<string, StockSuggestion>();
+
+    for (const quote of quotes) {
+      const xetraSymbol = toXetraSymbol(quote);
+      if (!xetraSymbol || suggestions.has(xetraSymbol)) continue;
+
+      suggestions.set(xetraSymbol, {
+        symbol: xetraSymbol,
         name: quote.shortname || quote.longname || '',
-        type: QUOTE_TYPE_LABELS[quote.quoteType],
-        logoUrl: quote.logoUrl ?? buildFallbackLogoUrl(quote.symbol),
-      }));
+        type: 'STOCK',
+        logoUrl: quote.logoUrl ?? buildFallbackLogoUrl(xetraSymbol),
+      });
+
+      if (suggestions.size >= 8) break;
+    }
+
+    return [...suggestions.values()];
   }
 
   async getDiscoverStocks(): Promise<DiscoverStock[]> {
     return Promise.all(
-      DISCOVER_STOCKS.map(async (stock) => {
+      DISCOVER_STOCKS.map(async (stock): Promise<DiscoverStock> => {
         const latest = await this.redisService.getJson<LivePriceEvent>(
           `stocklatest:${stock.ticker}`,
         );
-
-        return {
-          ...stock,
-          price: latest?.price,
-          change: latest?.changePercent ?? 0,
-          changeValue: latest?.change,
-        };
+        return this.mapDiscoverStock(stock, latest);
       }),
     );
   }
 
   streamLivePrice(symbol: string): Observable<MessageEvent> {
-    const normalizedSymbol = symbol.trim().toUpperCase();
+    const normalizedSymbol = this.parseXetraSymbol(symbol);
 
     return new Observable<MessageEvent>((subscriber) => {
-      if (!normalizedSymbol) {
-        subscriber.error(new Error('Symbol is required'));
-        return;
-      }
-
       const channel = `stocklive:${normalizedSymbol}`;
-      const onMessage = (message: string) => {
-        try {
-          const payload = JSON.parse(message) as LivePriceEvent;
-          subscriber.next({
-            data: payload,
-          });
-        } catch {
-          subscriber.next({
-            data: {
-              symbol: normalizedSymbol,
-              raw: message,
-            },
-          });
-        }
-      };
+      const onMessage = this.createLiveMessageHandler(
+        normalizedSymbol,
+        subscriber,
+      );
 
       void (async () => {
-        await this.redisService.subscribe(channel, onMessage);
-        await this.redisService.incrementActiveSubscriber(normalizedSymbol);
-        await this.redisService.markSymbolActive(normalizedSymbol);
-        await this.redisService.requestImmediateLivePrice(normalizedSymbol);
+        await this.subscribeToLiveSymbol(normalizedSymbol, channel, onMessage);
       })().catch((error: unknown) => {
         subscriber.error(error);
       });
 
       return () => {
-        void this.redisService.unsubscribe(channel, onMessage);
-        void this.redisService.decrementActiveSubscriber(normalizedSymbol);
+        void this.unsubscribeFromLiveSymbol(
+          normalizedSymbol,
+          channel,
+          onMessage,
+        );
       };
     });
   }
 
   streamLivePrices(symbols: string[]): Observable<MessageEvent> {
-    const normalizedSymbols = [
-      ...new Set(
-        symbols
-          .map((symbol) => symbol.trim().toUpperCase())
-          .filter((symbol) => symbol.length > 0),
-      ),
-    ];
+    const normalizedSymbols = this.parseUniqueXetraSymbols(symbols);
+
+    if (normalizedSymbols.length === 0) {
+      throw new BadRequestException('At least one valid symbol is required');
+    }
 
     return new Observable<MessageEvent>((subscriber) => {
-      if (normalizedSymbols.length === 0) {
-        subscriber.error(new Error('At least one symbol is required'));
-        return;
-      }
-
-      const subscriptions = normalizedSymbols.map((symbol) => {
-        const channel = `stocklive:${symbol}`;
-        const onMessage = (message: string) => {
-          try {
-            subscriber.next({
-              data: JSON.parse(message) as LivePriceEvent,
-            });
-          } catch {
-            subscriber.next({
-              data: {
-                symbol,
-                raw: message,
-              },
-            });
-          }
-        };
-
-        return { symbol, channel, onMessage };
-      });
+      const subscriptions: LiveSubscription[] = normalizedSymbols.map(
+        (symbol) => {
+          const channel = `stocklive:${symbol}`;
+          const onMessage = this.createLiveMessageHandler(symbol, subscriber);
+          return { symbol, channel, onMessage };
+        },
+      );
 
       void (async () => {
         await Promise.all(
-          subscriptions.map(async ({ symbol, channel, onMessage }) => {
-            await this.redisService.subscribe(channel, onMessage);
-            await this.redisService.incrementActiveSubscriber(symbol);
-            await this.redisService.markSymbolActive(symbol);
-            await this.redisService.requestImmediateLivePrice(symbol);
-          }),
+          subscriptions.map(({ symbol, channel, onMessage }) =>
+            this.subscribeToLiveSymbol(symbol, channel, onMessage),
+          ),
         );
       })().catch((error: unknown) => {
         subscriber.error(error);
@@ -287,10 +315,9 @@ export class StocksService {
 
       return () => {
         void Promise.all(
-          subscriptions.map(async ({ symbol, channel, onMessage }) => {
-            await this.redisService.unsubscribe(channel, onMessage);
-            await this.redisService.decrementActiveSubscriber(symbol);
-          }),
+          subscriptions.map(({ symbol, channel, onMessage }) =>
+            this.unsubscribeFromLiveSymbol(symbol, channel, onMessage),
+          ),
         );
       };
     });
@@ -300,10 +327,7 @@ export class StocksService {
     symbol: string,
     rangeInput: string,
   ): Promise<ChartHistoryResponse> {
-    const normalizedSymbol = symbol.trim().toUpperCase();
-    if (!normalizedSymbol) {
-      throw new BadRequestException('Symbol is required');
-    }
+    const normalizedSymbol = this.parseXetraSymbol(symbol);
 
     const range = this.parseChartRange(rangeInput);
     const status = await this.ensureBootstrapStartedIfNeeded(normalizedSymbol);
@@ -369,27 +393,93 @@ export class StocksService {
       return 'READY';
     }
 
-    const lockExists = await this.redisService.exists(
-      `bootstraplock:${symbol}`,
-    );
-    if (!lockExists) {
-      await this.redisService.enqueueBootstrap(symbol);
-    }
+    await this.redisService.enqueueBootstrapOnce(symbol);
 
     return 'BOOTSTRAPPING';
+  }
+
+  private parseXetraSymbol(symbol: string): string {
+    const normalizedSymbol = normalizeSymbol(symbol);
+    if (!normalizedSymbol) {
+      throw new BadRequestException('Symbol is required');
+    }
+    if (!isXetraSymbol(normalizedSymbol)) {
+      throw new BadRequestException(
+        `Only Xetra stock symbols ending in ${XETRA_SYMBOL_SUFFIX} are supported`,
+      );
+    }
+
+    return normalizedSymbol;
+  }
+
+  private parseUniqueXetraSymbols(symbols: string[]): string[] {
+    return [
+      ...new Set(
+        symbols
+          .map((symbol) => symbol.trim())
+          .filter((symbol) => symbol.length > 0)
+          .map((symbol) => this.parseXetraSymbol(symbol)),
+      ),
+    ];
+  }
+
+  private mapDiscoverStock(
+    stock: DiscoverStockDefinition,
+    latest: LivePriceEvent | null,
+  ): DiscoverStock {
+    return {
+      ...stock,
+      price: latest?.price,
+      change: latest?.changePercent ?? 0,
+      changeValue: latest?.change,
+    };
+  }
+
+  private createLiveMessageHandler(
+    symbol: string,
+    subscriber: Subscriber<MessageEvent>,
+  ) {
+    return (message: string) => {
+      try {
+        subscriber.next({
+          data: JSON.parse(message) as LivePriceEvent,
+        });
+      } catch {
+        subscriber.next({
+          data: {
+            symbol,
+            raw: message,
+          },
+        });
+      }
+    };
+  }
+
+  private async subscribeToLiveSymbol(
+    symbol: string,
+    channel: string,
+    onMessage: (message: string) => void,
+  ) {
+    await this.redisService.subscribe(channel, onMessage);
+    await this.redisService.incrementActiveSubscriber(symbol);
+    await this.redisService.markSymbolActive(symbol);
+    await this.redisService.requestImmediateLivePrice(symbol);
+  }
+
+  private async unsubscribeFromLiveSymbol(
+    symbol: string,
+    channel: string,
+    onMessage: (message: string) => void,
+  ) {
+    await this.redisService.unsubscribe(channel, onMessage);
+    await this.redisService.decrementActiveSubscriber(symbol);
   }
 
   private parseChartRange(rangeInput: string): ChartRange {
     const normalizedRange = rangeInput.trim().toUpperCase() || '1D';
 
-    if (
-      normalizedRange === '1D' ||
-      normalizedRange === '1W' ||
-      normalizedRange === '1M' ||
-      normalizedRange === '1Y' ||
-      normalizedRange === 'ALL'
-    ) {
-      return normalizedRange;
+    if (CHART_RANGES.includes(normalizedRange as ChartRange)) {
+      return normalizedRange as ChartRange;
     }
 
     throw new BadRequestException(

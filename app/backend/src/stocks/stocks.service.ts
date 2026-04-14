@@ -1,4 +1,6 @@
-import { BadGatewayException, Injectable } from '@nestjs/common';
+import { BadGatewayException, Injectable, MessageEvent } from '@nestjs/common';
+import { Observable } from 'rxjs';
+import { RedisService } from '../redis/redis.service.js';
 
 type YahooSearchResponse = {
   quotes?: YahooQuote[];
@@ -19,6 +21,13 @@ export type StockSuggestion = {
   logoUrl: string | null;
 };
 
+type LivePriceEvent = {
+  symbol: string;
+  price?: number;
+  time: number;
+  bootstrapDone?: boolean;
+};
+
 const QUOTE_TYPE_LABELS = {
   EQUITY: 'STOCK',
   ETF: 'ETF',
@@ -37,6 +46,8 @@ function buildFallbackLogoUrl(symbol: string): string {
 
 @Injectable()
 export class StocksService {
+  constructor(private redisService: RedisService) {}
+
   async search(query: string): Promise<StockSuggestion[]> {
     const trimmedQuery = query.trim();
     if (!trimmedQuery) return [];
@@ -83,5 +94,46 @@ export class StocksService {
         type: QUOTE_TYPE_LABELS[quote.quoteType],
         logoUrl: quote.logoUrl ?? buildFallbackLogoUrl(quote.symbol),
       }));
+  }
+
+  streamLivePrice(symbol: string): Observable<MessageEvent> {
+    const normalizedSymbol = symbol.trim().toUpperCase();
+
+    return new Observable<MessageEvent>((subscriber) => {
+      if (!normalizedSymbol) {
+        subscriber.error(new Error('Symbol is required'));
+        return;
+      }
+
+      const channel = `stocklive:${normalizedSymbol}`;
+      const onMessage = (message: string) => {
+        try {
+          const payload = JSON.parse(message) as LivePriceEvent;
+          subscriber.next({
+            data: payload,
+          });
+        } catch {
+          subscriber.next({
+            data: {
+              symbol: normalizedSymbol,
+              raw: message,
+            },
+          });
+        }
+      };
+
+      void this.redisService.incrementActiveSubscriber(normalizedSymbol);
+      void this.redisService.markSymbolActive(normalizedSymbol);
+      void this.redisService
+        .subscribe(channel, onMessage)
+        .catch((error: unknown) => {
+          subscriber.error(error);
+        });
+
+      return () => {
+        void this.redisService.unsubscribe(channel);
+        void this.redisService.decrementActiveSubscriber(normalizedSymbol);
+      };
+    });
   }
 }

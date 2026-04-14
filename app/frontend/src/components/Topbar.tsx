@@ -1,5 +1,6 @@
-import { PanelLeft, Sun, Moon, Search } from 'lucide-react'
+import { PanelLeft, Sun, Moon } from 'lucide-react'
 import { useTheme } from '../hooks/useTheme'
+import { SearchBar } from './discover/SearchBar'
 
 interface TopbarProps {
   onToggle: () => void
@@ -9,7 +10,7 @@ export default function Topbar({ onToggle }: TopbarProps) {
   const { theme, toggle } = useTheme()
 
   return (
-    <div className="flex items-center justify-between w-full h-60 px-25 bg-surface border-b border-border transition-colors duration-200 ease-out">
+    <div className="flex items-center justify-between w-full h-60 max-h-60 px-25 bg-surface border-b border-border transition-colors duration-200 ease-out">
       <button onClick={onToggle}>
         <PanelLeft
           size={20}
@@ -18,19 +19,8 @@ export default function Topbar({ onToggle }: TopbarProps) {
         />
       </button>
 
-      <div className="flex gap-40 pr-80">
-        <div className="flex items-center gap-8 px-15 py-8 bg-bg border border-border rounded-xl w-75 transition-colors duration-200 ease-out">
-          <Search
-            size={16}
-            strokeWidth={1.5}
-            className="text-muted transition-colors duration-200 ease-out"
-          />
-          <input
-            type="text"
-            placeholder="Search..."
-            className="bg-transparent text-small text-text placeholder:text-muted outline-none w-full transition-colors duration-200 ease-out"
-          />
-        </div>
+      <div className="flex flex-1 items-center justify-end gap-40 pr-80">
+        <SearchBar className="w-88 max-w-[50vw] flex-none" size="compact" />
 
         <button
           onClick={toggle}

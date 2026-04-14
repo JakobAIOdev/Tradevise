@@ -31,6 +31,11 @@ export class RedisService implements OnModuleDestroy {
     await this.client.lpush('bootstrapqueue', symbol);
   }
 
+  async exists(key: string) {
+    const result = await this.client.exists(key);
+    return result === 1;
+  }
+
   async getJson<T>(key: string) {
     const value = await this.client.get(key);
     if (!value) return null;

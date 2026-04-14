@@ -21,7 +21,7 @@ export default function StockLogo({ src, ticker }: StockLogoProps) {
       src={src}
       alt={ticker}
       onError={() => setError(true)}
-      className="w-48 h-48 rounded-xl object-containshrink-0"
+      className="w-48 h-48 rounded-xl object-contain shrink-0"
     />
   )
 }

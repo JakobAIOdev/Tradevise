@@ -16,3 +16,33 @@ model User {
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 }
+
+model PriceIntraday {
+  symbol String   @db.Text
+  time   DateTime @db.Timestamptz
+  price  Decimal  @db.Decimal(14, 4)
+
+  @@id([symbol, time])
+  @@map("prices_intraday")
+}
+
+model PriceWeekly {
+  symbol String   @db.Text
+  date   DateTime @db.Date
+  price  Decimal  @db.Decimal(14, 4)
+
+  @@id([symbol, date])
+  @@map("prices_weekly")
+}
+
+model TrackedSymbol {
+  symbol            String    @id @db.Text
+  name              String?   @db.Text
+  currency          String?   @db.Text
+  bootstrapStatus   String?   @default("PENDING") @map("bootstrap_status") @db.Text
+  bootstrappedAt    DateTime? @map("bootstrapped_at") @db.Timestamptz
+  lastIntradayFetch DateTime? @map("last_intraday_fetch") @db.Timestamptz
+  lastWeeklyFetch   DateTime? @map("last_weekly_fetch") @db.Timestamptz
+
+  @@map("tracked_symbols")
+}

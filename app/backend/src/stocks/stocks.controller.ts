@@ -12,6 +12,16 @@ export class StocksController {
     return this.stocksService.search(query);
   }
 
+  @Get('discover')
+  discover() {
+    return this.stocksService.getDiscoverStocks();
+  }
+
+  @Sse('live')
+  liveMany(@Query('symbols') symbols = '') {
+    return this.stocksService.streamLivePrices(symbols.split(','));
+  }
+
   @Get(':ticker/chart')
   chart(@Param('ticker') ticker: string, @Query('range') range = '1D') {
     return this.stocksService.getChartHistory(ticker, range);

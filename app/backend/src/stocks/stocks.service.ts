@@ -156,13 +156,14 @@ export class StocksService {
         }
       };
 
-      void this.redisService.incrementActiveSubscriber(normalizedSymbol);
-      void this.redisService.markSymbolActive(normalizedSymbol);
-      void this.redisService
-        .subscribe(channel, onMessage)
-        .catch((error: unknown) => {
-          subscriber.error(error);
-        });
+      void (async () => {
+        await this.redisService.subscribe(channel, onMessage);
+        await this.redisService.incrementActiveSubscriber(normalizedSymbol);
+        await this.redisService.markSymbolActive(normalizedSymbol);
+        await this.redisService.requestImmediateLivePrice(normalizedSymbol);
+      })().catch((error: unknown) => {
+        subscriber.error(error);
+      });
 
       return () => {
         void this.redisService.unsubscribe(channel, onMessage);

@@ -31,6 +31,10 @@ export class RedisService implements OnModuleDestroy {
     await this.client.lpush('bootstrapqueue', symbol);
   }
 
+  async requestImmediateLivePrice(symbol: string) {
+    await this.client.publish('stocklive:fetchnow', symbol);
+  }
+
   async exists(key: string) {
     const result = await this.client.exists(key);
     return result === 1;

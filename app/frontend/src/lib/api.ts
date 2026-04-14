@@ -72,7 +72,7 @@ export async function protectedFetch(input: RequestInfo, init?: RequestInit) {
 
 export function buildApiUrl(path: string) {
   const normalizedPath = path.startsWith('/') ? path : `/${path}`
-  let baseUrl = import.meta.env.VITE_API_BASE_URL as string
+  let baseUrl = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? 'http://localhost:3000'
   baseUrl = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl
 
   return `${baseUrl}${normalizedPath}`

@@ -4,6 +4,7 @@ import { useState } from 'react'
 import DetailHeader from '../components/detail/DetailHeader'
 import KeyStatistics from '../components/detail/KeyStatistics'
 import ActionButton from '../components/detail/ActionButton'
+import StockChart from '../components/chart/StockChart'
 
 const stock = {
   name: 'Apple Inc.',
@@ -30,7 +31,9 @@ export default function StockDetailPage() {
       </div>
       <DetailHeader {...stock} />
       <div className="grid grid-cols-[minmax(0,1fr)_19.6875rem] gap-6 mt-6">
-        <div className="flex-1 h-111.5 bg-red-400 rounded-xl" />
+        <div className="flex-1 h-111.5 bg-red-400 rounded-xl">
+          <StockChart ticker="APC.DE" />
+        </div>
         <div className="flex flex-col">
           <KeyStatistics />
           <div className="flex w-full gap-3 pt-4">

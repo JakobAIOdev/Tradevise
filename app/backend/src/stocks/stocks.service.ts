@@ -185,14 +185,16 @@ export class StocksService {
     const status = await this.ensureBootstrapStartedIfNeeded(normalizedSymbol);
 
     if (range === '1D' || range === '1W' || range === '1M') {
-      const intervalSql = this.getIntradayIntervalSql(range);
+      const timeFilterSql =
+        range === '1D'
+          ? this.getCurrentUsMarketDayFilterSql(normalizedSymbol)
+          : this.getRollingIntradayFilterSql(normalizedSymbol, range);
       const rows = await this.prisma.$queryRaw<ChartRow[]>(Prisma.sql`
         SELECT
           EXTRACT(EPOCH FROM time)::bigint AS time,
           price::double precision AS price
         FROM prices_intraday
-        WHERE symbol = ${normalizedSymbol}
-          AND time >= NOW() - ${intervalSql}
+        ${timeFilterSql}
         ORDER BY time ASC
       `);
 
@@ -273,10 +275,42 @@ export class StocksService {
     );
   }
 
-  private getIntradayIntervalSql(range: '1D' | '1W' | '1M') {
+  private getRollingIntradayFilterSql(symbol: string, range: '1W' | '1M') {
+    const intervalSql = this.getIntradayIntervalSql(range);
+
+    return Prisma.sql`
+      WHERE symbol = ${symbol}
+        AND time >= NOW() - ${intervalSql}
+    `;
+  }
+
+  private getCurrentUsMarketDayFilterSql(symbol: string) {
+    return Prisma.sql`
+      WHERE symbol = ${symbol}
+        AND time >= (
+          (
+            CASE
+              WHEN EXTRACT(ISODOW FROM NOW() AT TIME ZONE 'America/New_York') = 6
+                THEN DATE(NOW() AT TIME ZONE 'America/New_York') - INTERVAL '1 day'
+              WHEN EXTRACT(ISODOW FROM NOW() AT TIME ZONE 'America/New_York') = 7
+                THEN DATE(NOW() AT TIME ZONE 'America/New_York') - INTERVAL '2 days'
+              WHEN (
+                EXTRACT(ISODOW FROM NOW() AT TIME ZONE 'America/New_York') = 1
+                AND (NOW() AT TIME ZONE 'America/New_York')::time < TIME '09:30'
+              )
+                THEN DATE(NOW() AT TIME ZONE 'America/New_York') - INTERVAL '3 days'
+              WHEN (NOW() AT TIME ZONE 'America/New_York')::time < TIME '09:30'
+                THEN DATE(NOW() AT TIME ZONE 'America/New_York') - INTERVAL '1 day'
+              ELSE DATE(NOW() AT TIME ZONE 'America/New_York')
+            END
+            + TIME '09:30'
+          ) AT TIME ZONE 'America/New_York'
+        )
+    `;
+  }
+
+  private getIntradayIntervalSql(range: '1W' | '1M') {
     switch (range) {
-      case '1D':
-        return Prisma.sql`INTERVAL '1 day'`;
       case '1W':
         return Prisma.sql`INTERVAL '7 days'`;
       case '1M':

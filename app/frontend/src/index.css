@@ -1,77 +1,78 @@
-@import "@fontsource-variable/space-grotesk";
-@import "tailwindcss";
+@import '@fontsource-variable/space-grotesk';
+@import 'tailwindcss';
 
 @theme {
-    /* COLORS – Light (Defaults) */
-    --color-bg: #F9FAFB;
-    --color-surface: #FFFFFF;
-    --color-surface-hover: #F3F4F6;
-    --color-text: #1A2235;
-    --color-muted: #6B7280;
-    --color-border: #E5E7EB;
+  /* COLORS – Light (Defaults) */
+  --color-bg: #f9fafb;
+  --color-surface: #ffffff;
+  --color-surface-hover: #f3f4f6;
+  --color-text: #1a2235;
+  --color-muted: #6b7280;
+  --color-border: #e5e7eb;
+  --color-sparkline: #373535;
 
-    --color-bullish: #01AF44;
-    --color-bearish: #FF3A3A;
-    --color-error: #EF4444;
-    --color-warning: #F6D7A3;
-    --color-success: #14DD9A;
+  --color-bullish: #01af44;
+  --color-bearish: #ff3a3a;
+  --color-error: #ef4444;
+  --color-warning: #f6d7a3;
+  --color-success: #14dd9a;
 
-    /* TYPOGRAPHY */
-    --font-sans: 'Space Grotesk Variable', system-ui, sans-serif;
+  /* TYPOGRAPHY */
+  --font-sans: 'Space Grotesk Variable', system-ui, sans-serif;
 
-    --text-h1: 3rem;
-    --text-h2: 2rem;
-    --text-h3: 1.5rem;
-    --text-body: 1.125rem;
-    --text-small: 0.875rem;
-    --text-h1-mobile: 2rem;
-    --text-h2-mobile: 1.625rem;
-    --text-h3-mobile: 1.25rem;
-    --text-body-mobile: 1rem;
-    --text-small-mobile: 0.75rem;
+  --text-h1: 3rem;
+  --text-h2: 2rem;
+  --text-h3: 1.5rem;
+  --text-body: 1.125rem;
+  --text-small: 0.875rem;
+  --text-h1-mobile: 2rem;
+  --text-h2-mobile: 1.625rem;
+  --text-h3-mobile: 1.25rem;
+  --text-body-mobile: 1rem;
+  --text-small-mobile: 0.75rem;
 
-    /* SPACING – Desktop */
-    --spacing-10: 0.625rem;
-    --spacing-15: 0.9375rem;
-    --spacing-25: 1.5625rem;
-    --spacing-40: 2.5rem;
-    --spacing-60: 3.75rem;
-    --spacing-80: 5rem;
+  /* SPACING – Desktop */
+  --spacing-10: 0.625rem;
+  --spacing-15: 0.9375rem;
+  --spacing-25: 1.5625rem;
+  --spacing-40: 2.5rem;
+  --spacing-60: 3.75rem;
+  --spacing-80: 5rem;
 
-    /* SPACING – Mobile */
-    --spacing-8: 0.5rem;
-    --spacing-12: 0.75rem;
-    --spacing-18: 1.125rem;
-    --spacing-32: 2rem;
-    --spacing-48: 3rem;
-    --spacing-64: 4rem;
+  /* SPACING – Mobile */
+  --spacing-8: 0.5rem;
+  --spacing-12: 0.75rem;
+  --spacing-18: 1.125rem;
+  --spacing-32: 2rem;
+  --spacing-48: 3rem;
+  --spacing-64: 4rem;
 }
 
-[data-theme="dark"] {
-    --color-bg: #0D0F14;
-    --color-surface: #161B26;
-    --color-surface-hover: #1E2536;
-    --color-text: #F1F3F5;
-    --color-muted: #8B95A3;
-    --color-border: #2A3040;
+[data-theme='dark'] {
+  --color-bg: #0d0f14;
+  --color-surface: #161b26;
+  --color-surface-hover: #1e2536;
+  --color-text: #f1f3f5;
+  --color-muted: #8b95a3;
+  --color-border: #2a3040;
+  --color-sparkline: #373535;
 
-    --color-bullish: #00D06B;
-    --color-bearish: #FF4D4D;
-    --color-error: #EF4444;
-    --color-warning: #F6D7A3;
-    --color-success: #10B981;
-
+  --color-bullish: #00d06b;
+  --color-bearish: #ff4d4d;
+  --color-error: #ef4444;
+  --color-warning: #f6d7a3;
+  --color-success: #10b981;
 }
 
 :root {
-    color-scheme: light;
+  color-scheme: light;
 }
 
-[data-theme="dark"] {
-    color-scheme: dark;
+[data-theme='dark'] {
+  color-scheme: dark;
 }
 
 body {
-    background: var(--color-bg);
-    color: var(--color-text);
+  background: var(--color-bg);
+  color: var(--color-text);
 }

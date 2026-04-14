@@ -1,11 +1,11 @@
 import { useQuery } from '@tanstack/react-query'
 import { useState, useEffect } from 'react'
 import type { StockSuggestion } from '../Types'
-import { buildApiUrl } from '../lib/api'
+import { buildApiUrl, protectedFetch } from '../lib/api'
 
 async function fetchStockSuggestions(query: string): Promise<StockSuggestion[]> {
   const params = new URLSearchParams({ q: query })
-  const res = await fetch(buildApiUrl(`/stocks/search?${params.toString()}`))
+  const res = await protectedFetch(buildApiUrl(`/stocks/search?${params.toString()}`))
 
   if (!res.ok) throw new Error('Search failed')
 

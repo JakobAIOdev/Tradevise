@@ -2,7 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAuthStore } from '../stores/authStore'
 import { buildApiUrl } from '../lib/api'
 
-export function useLogin() {
+export function useRegister() {
   const setSession = useAuthStore((s) => s.setSession)
   const queryClient = useQueryClient()
 

@@ -63,7 +63,7 @@ func runLiveTickerFetchNow(rdb *goredis.Client, sym *store.SymbolStore, conv *co
 }
 
 func publishLivePrice(rdb *goredis.Client, sym *store.SymbolStore, conv *converter.CurrencyConverter, symbol string) error {
-	price, ts, err := scraper.FetchLivePrice(symbol)
+	price, previousClose, change, changePercent, ts, err := scraper.FetchLivePrice(symbol)
 	if err != nil {
 		return err
 	}
@@ -71,11 +71,16 @@ func publishLivePrice(rdb *goredis.Client, sym *store.SymbolStore, conv *convert
 	tracked := sym.GetTracked()
 	currency := tracked[symbol]
 	priceEUR := conv.ToEUR(price, currency)
+	previousCloseEUR := conv.ToEUR(previousClose, currency)
+	changeEUR := conv.ToEUR(change, currency)
 
 	event := model.LivePriceEvent{
-		Symbol: symbol,
-		Price:  priceEUR,
-		Time:   ts,
+		Symbol:        symbol,
+		Price:         priceEUR,
+		PreviousClose: previousCloseEUR,
+		Change:        changeEUR,
+		ChangePercent: changePercent,
+		Time:          ts,
 	}
 
 	payload, err := json.Marshal(event)
@@ -83,10 +88,14 @@ func publishLivePrice(rdb *goredis.Client, sym *store.SymbolStore, conv *convert
 		return err
 	}
 
+	if err := rdb.Set(context.Background(), "stocklatest:"+symbol, payload, 2*time.Minute).Err(); err != nil {
+		return err
+	}
+
 	if err := rdb.Publish(context.Background(), "stocklive:"+symbol, payload).Err(); err != nil {
 		return err
 	}
 
-	log.Printf("[LiveTicker] published %s → %.2f EUR", symbol, priceEUR)
+	log.Printf("[LiveTicker] published %s → %.2f EUR (%+.2f%%)", symbol, priceEUR, changePercent)
 	return nil
 }

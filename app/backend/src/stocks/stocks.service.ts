@@ -32,7 +32,22 @@ type LivePriceEvent = {
   symbol: string;
   price?: number;
   time: number;
+  previousClose?: number;
+  change?: number;
+  changePercent?: number;
   bootstrapDone?: boolean;
+};
+
+type DiscoverStockDefinition = {
+  name: string;
+  ticker: string;
+  logo: string;
+};
+
+type DiscoverStock = DiscoverStockDefinition & {
+  change: number;
+  price?: number;
+  changeValue?: number;
 };
 
 type ChartRange = '1D' | '1W' | '1M' | '1Y' | 'ALL';
@@ -64,6 +79,39 @@ const QUOTE_TYPE_LABELS = {
   ETF: 'ETF',
   CRYPTOCURRENCY: 'CRYPTO',
 } as const;
+
+const DISCOVER_STOCKS: DiscoverStockDefinition[] = [
+  {
+    name: 'Apple Inc.',
+    ticker: 'APC.DE',
+    logo: 'https://s.yimg.com/lb/brands/150x150_apple.png',
+  },
+  {
+    name: 'Tesla',
+    ticker: 'TL0.DE',
+    logo: 'https://s.yimg.com/lb/brands/150x150_tesla.png',
+  },
+  {
+    name: 'Microsoft',
+    ticker: 'MSF.DE',
+    logo: 'https://s.yimg.com/lb/brands/150x150_microsoft.png',
+  },
+  {
+    name: 'Amazon',
+    ticker: 'AMZ.DE',
+    logo: 'https://s.yimg.com/lb/brands/150x150_amazon.png',
+  },
+  {
+    name: 'NVIDIA',
+    ticker: 'NVD.DE',
+    logo: 'https://s.yimg.com/lb/brands/150x150_nvidia.png',
+  },
+  {
+    name: 'Alphabet',
+    ticker: 'ABEA.DE',
+    logo: 'https://s.yimg.com/lb/brands/150x150_google.png',
+  },
+];
 
 type SupportedQuoteType = keyof typeof QUOTE_TYPE_LABELS;
 
@@ -130,6 +178,23 @@ export class StocksService {
       }));
   }
 
+  async getDiscoverStocks(): Promise<DiscoverStock[]> {
+    return Promise.all(
+      DISCOVER_STOCKS.map(async (stock) => {
+        const latest = await this.redisService.getJson<LivePriceEvent>(
+          `stocklatest:${stock.ticker}`,
+        );
+
+        return {
+          ...stock,
+          price: latest?.price,
+          change: latest?.changePercent ?? 0,
+          changeValue: latest?.change,
+        };
+      }),
+    );
+  }
+
   streamLivePrice(symbol: string): Observable<MessageEvent> {
     const normalizedSymbol = symbol.trim().toUpperCase();
 
@@ -168,6 +233,65 @@ export class StocksService {
       return () => {
         void this.redisService.unsubscribe(channel, onMessage);
         void this.redisService.decrementActiveSubscriber(normalizedSymbol);
+      };
+    });
+  }
+
+  streamLivePrices(symbols: string[]): Observable<MessageEvent> {
+    const normalizedSymbols = [
+      ...new Set(
+        symbols
+          .map((symbol) => symbol.trim().toUpperCase())
+          .filter((symbol) => symbol.length > 0),
+      ),
+    ];
+
+    return new Observable<MessageEvent>((subscriber) => {
+      if (normalizedSymbols.length === 0) {
+        subscriber.error(new Error('At least one symbol is required'));
+        return;
+      }
+
+      const subscriptions = normalizedSymbols.map((symbol) => {
+        const channel = `stocklive:${symbol}`;
+        const onMessage = (message: string) => {
+          try {
+            subscriber.next({
+              data: JSON.parse(message) as LivePriceEvent,
+            });
+          } catch {
+            subscriber.next({
+              data: {
+                symbol,
+                raw: message,
+              },
+            });
+          }
+        };
+
+        return { symbol, channel, onMessage };
+      });
+
+      void (async () => {
+        await Promise.all(
+          subscriptions.map(async ({ symbol, channel, onMessage }) => {
+            await this.redisService.subscribe(channel, onMessage);
+            await this.redisService.incrementActiveSubscriber(symbol);
+            await this.redisService.markSymbolActive(symbol);
+            await this.redisService.requestImmediateLivePrice(symbol);
+          }),
+        );
+      })().catch((error: unknown) => {
+        subscriber.error(error);
+      });
+
+      return () => {
+        void Promise.all(
+          subscriptions.map(async ({ symbol, channel, onMessage }) => {
+            await this.redisService.unsubscribe(channel, onMessage);
+            await this.redisService.decrementActiveSubscriber(symbol);
+          }),
+        );
       };
     });
   }

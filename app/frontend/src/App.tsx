@@ -1,6 +1,5 @@
 import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import LandingPage from './pages/LandingPage'
-import LoginPage from './pages/LoginPage'
 import HomePage from './pages/HomePage'
 import PortfolioPage from './pages/PortfolioPage'
 import DiscoverPage from './pages/DiscoverPage'
@@ -30,7 +29,6 @@ function App() {
         <Routes>
           <Route element={<PublicLayout />}>
             <Route path="/" element={<LandingPage />} />
-            <Route path="/login" element={<LoginPage />} />
           </Route>
 
           <Route element={<DashboardLayout />}>

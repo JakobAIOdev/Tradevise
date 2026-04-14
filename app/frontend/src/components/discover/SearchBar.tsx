@@ -99,7 +99,7 @@ export function SearchBar({ className = '', size = 'default' }: SearchBarProps) 
         <input
           type="text"
           value={input}
-          placeholder="Search Stocks or Crypto..."
+          placeholder="Search Assets..."
           onChange={(e) => {
             setInput(e.target.value)
             setActiveIndex(-1)
@@ -111,7 +111,7 @@ export function SearchBar({ className = '', size = 'default' }: SearchBarProps) 
           onKeyDown={handleKeyDown}
           autoComplete="off"
           spellCheck={false}
-          aria-label="Search Stocks"
+          aria-label="Search Assets..."
           aria-autocomplete="list"
           aria-expanded={showDropdown}
           className="

@@ -15,20 +15,20 @@ import (
 )
 
 func RunBootstrap(rdb *goredis.Client, pool *pgxpool.Pool, sym *store.SymbolStore) {
-    log.Println("[Bootstrap] started")
+	log.Println("[Bootstrap] started")
 
-    for {
-        result, err := rdb.BRPop(context.Background(), 0, "bootstrapqueue").Result()
-        if err != nil {
-            log.Printf("[Bootstrap] BRPOP error: %s", err)
-            time.Sleep(2 * time.Second)
-            continue
-        }
+	for {
+		result, err := rdb.BRPop(context.Background(), 0, "bootstrapqueue").Result()
+		if err != nil {
+			log.Printf("[Bootstrap] BRPOP error: %s", err)
+			time.Sleep(2 * time.Second)
+			continue
+		}
 
-        symbol := result[1]
-        log.Printf("[Bootstrap] bootstrapping %s", symbol)
+		symbol := result[1]
+		log.Printf("[Bootstrap] bootstrapping %s", symbol)
 
-        lockKey := "bootstraplock:" + symbol
+		lockKey := "bootstraplock:" + symbol
 		val, err := rdb.SetArgs(context.Background(), lockKey, 1, goredis.SetArgs{
 			Mode: "NX",
 			TTL:  10 * time.Minute,
@@ -39,60 +39,62 @@ func RunBootstrap(rdb *goredis.Client, pool *pgxpool.Pool, sym *store.SymbolStor
 			continue
 		}
 		if val != "OK" {
+			rdb.Del(context.Background(), "bootstrapqueued:"+symbol)
 			log.Printf("[Bootstrap] %s already being bootstrapped, skipping", symbol)
 			continue
 		}
+		rdb.Del(context.Background(), "bootstrapqueued:"+symbol)
 
-        if err := bootstrap(rdb, pool, sym, symbol); err != nil {
-            log.Printf("[Bootstrap] bootstrap failed for %s: %s", symbol, err)
-            rdb.Del(context.Background(), lockKey)
-            continue
-        }
+		if err := bootstrap(rdb, pool, sym, symbol); err != nil {
+			log.Printf("[Bootstrap] bootstrap failed for %s: %s", symbol, err)
+			rdb.Del(context.Background(), lockKey)
+			continue
+		}
 
-        rdb.Del(context.Background(), lockKey)
-    }
+		rdb.Del(context.Background(), lockKey)
+	}
 }
 
 func bootstrap(rdb *goredis.Client, pool *pgxpool.Pool, sym *store.SymbolStore, symbol string) error {
-    log.Printf("[Bootstrap] fetching intraday 60d for %s", symbol)
-    intradayPoints, currency, err := scraper.FetchBootstrapIntraday(symbol)
-    if err != nil {
-        return err
-    }
-    time.Sleep(300 * time.Millisecond)
+	log.Printf("[Bootstrap] fetching intraday 60d for %s", symbol)
+	intradayPoints, currency, err := scraper.FetchBootstrapIntraday(symbol)
+	if err != nil {
+		return err
+	}
+	time.Sleep(300 * time.Millisecond)
 
-    if err := db.UpsertIntraday(pool, symbol, intradayPoints); err != nil {
-        return err
-    }
-    log.Printf("[Bootstrap] %s intraday done (%d points)", symbol, len(intradayPoints))
+	if err := db.UpsertIntraday(pool, symbol, intradayPoints); err != nil {
+		return err
+	}
+	log.Printf("[Bootstrap] %s intraday done (%d points)", symbol, len(intradayPoints))
 
-    log.Printf("[Bootstrap] fetching weekly history for %s", symbol)
-    weeklyPoints, _, err := scraper.FetchBootstrapWeekly(symbol)
-    if err != nil {
-        return err
-    }
-    time.Sleep(300 * time.Millisecond)
+	log.Printf("[Bootstrap] fetching weekly history for %s", symbol)
+	weeklyPoints, _, err := scraper.FetchBootstrapWeekly(symbol)
+	if err != nil {
+		return err
+	}
+	time.Sleep(300 * time.Millisecond)
 
-    if err := db.UpsertWeekly(pool, symbol, weeklyPoints); err != nil {
-        return err
-    }
-    log.Printf("[Bootstrap] %s weekly done (%d points)", symbol, len(weeklyPoints))
+	if err := db.UpsertWeekly(pool, symbol, weeklyPoints); err != nil {
+		return err
+	}
+	log.Printf("[Bootstrap] %s weekly done (%d points)", symbol, len(weeklyPoints))
 
-    if err := db.SetSymbolDone(pool, symbol, currency, symbol); err != nil {
-        return err
-    }
+	if err := db.SetSymbolDone(pool, symbol, currency, symbol); err != nil {
+		return err
+	}
 
-    sym.AddTracked(symbol, currency)
-    log.Printf("[Bootstrap] %s added to tracked symbols", symbol)
+	sym.AddTracked(symbol, currency)
+	log.Printf("[Bootstrap] %s added to tracked symbols", symbol)
 
-    event := model.LivePriceEvent{
-        Symbol:        symbol,
-        Time:          time.Now().Unix(),
-        BootstrapDone: true,
-    }
-    payload, _ := json.Marshal(event)
-    rdb.Publish(context.Background(), "stocklive:"+symbol, payload)
+	event := model.LivePriceEvent{
+		Symbol:        symbol,
+		Time:          time.Now().Unix(),
+		BootstrapDone: true,
+	}
+	payload, _ := json.Marshal(event)
+	rdb.Publish(context.Background(), "stocklive:"+symbol, payload)
 
-    log.Printf("[Bootstrap] bootstrap complete for %s", symbol)
-    return nil
+	log.Printf("[Bootstrap] bootstrap complete for %s", symbol)
+	return nil
 }

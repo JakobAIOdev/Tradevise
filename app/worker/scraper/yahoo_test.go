@@ -134,11 +134,31 @@ func TestFetchReturnsErrorWhenResultIsEmpty(t *testing.T) {
 	}
 }
 
+func TestNormalizeXetraSymbol(t *testing.T) {
+	got, err := normalizeXetraSymbol(" apc.de ")
+	if err != nil {
+		t.Fatalf("normalizeXetraSymbol() returned error: %v", err)
+	}
+	if got != "APC.DE" {
+		t.Fatalf("normalizeXetraSymbol() = %q, want %q", got, "APC.DE")
+	}
+}
+
+func TestNormalizeXetraSymbolRejectsNonXetraSymbols(t *testing.T) {
+	_, err := normalizeXetraSymbol("AAPL")
+	if err == nil {
+		t.Fatal("normalizeXetraSymbol() returned nil error")
+	}
+	if err.Error() != "only Xetra stock symbols ending in .DE are supported" {
+		t.Fatalf("normalizeXetraSymbol() error = %q, want Xetra error", err.Error())
+	}
+}
+
 func TestFetchMetaMapsYahooMeta(t *testing.T) {
 	oldClient := httpClient
 	httpClient = &http.Client{
 		Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
-			wantURL := "https://query1.finance.yahoo.com/v8/finance/chart/AAPL?interval=1m&range=1d"
+			wantURL := "https://query1.finance.yahoo.com/v8/finance/chart/APC.DE?interval=1m&range=1d"
 			if r.URL.String() != wantURL {
 				t.Fatalf("request URL = %q, want %q", r.URL.String(), wantURL)
 			}
@@ -156,10 +176,10 @@ func TestFetchMetaMapsYahooMeta(t *testing.T) {
 					"chart": {
 						"result": [{
 							"meta": {
-								"currency": "USD",
-								"symbol": "AAPL",
+								"currency": "EUR",
+								"symbol": "APC.DE",
 								"longName": "Apple Inc.",
-								"fullExchangeName": "NasdaqGS",
+								"fullExchangeName": "XETRA",
 								"regularMarketVolume": 543210,
 								"fiftyTwoWeekHigh": 237.49,
 								"fiftyTwoWeekLow": 164.08,
@@ -183,22 +203,22 @@ func TestFetchMetaMapsYahooMeta(t *testing.T) {
 	}
 	t.Cleanup(func() { httpClient = oldClient })
 
-	got, err := FetchMeta("AAPL")
+	got, err := FetchMeta("APC.DE")
 	if err != nil {
 		t.Fatalf("FetchMeta() returned error: %v", err)
 	}
 
-	if got.Symbol != "AAPL" {
-		t.Fatalf("Symbol = %q, want %q", got.Symbol, "AAPL")
+	if got.Symbol != "APC.DE" {
+		t.Fatalf("Symbol = %q, want %q", got.Symbol, "APC.DE")
 	}
 	if got.Name != "Apple Inc." {
 		t.Fatalf("Name = %q, want %q", got.Name, "Apple Inc.")
 	}
-	if got.Currency != "USD" {
-		t.Fatalf("Currency = %q, want %q", got.Currency, "USD")
+	if got.Currency != "EUR" {
+		t.Fatalf("Currency = %q, want %q", got.Currency, "EUR")
 	}
-	if got.Exchange != "NasdaqGS" {
-		t.Fatalf("Exchange = %q, want %q", got.Exchange, "NasdaqGS")
+	if got.Exchange != "XETRA" {
+		t.Fatalf("Exchange = %q, want %q", got.Exchange, "XETRA")
 	}
 	if got.PreviousClose != 194.27 {
 		t.Fatalf("PreviousClose = %v, want %v", got.PreviousClose, 194.27)

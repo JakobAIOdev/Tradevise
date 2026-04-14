@@ -7,6 +7,7 @@ import (
 	"io"
 	"math/rand"
 	"net/http"
+	"strings"
 	"time"
 
 	"gitlab.ct.fh-salzburg.ac.at/fhs52920/tradevise/app/worker/model"
@@ -19,6 +20,8 @@ var userAgents = []string{
 }
 
 var httpClient = &http.Client{Timeout: 10 * time.Second}
+
+const xetraSymbolSuffix = ".DE"
 
 type yahooResponse struct {
 	Chart struct {
@@ -55,6 +58,34 @@ type yahooResponse struct {
 		} `json:"result"`
 		Error interface{} `json:"error"`
 	} `json:"chart"`
+}
+
+func hasValidYahooSymbolChars(symbol string) bool {
+	if len(symbol) <= len(xetraSymbolSuffix) {
+		return false
+	}
+
+	for _, char := range symbol {
+		isDigit := char >= '0' && char <= '9'
+		isUppercaseLetter := char >= 'A' && char <= 'Z'
+		if !isDigit && !isUppercaseLetter && char != '.' && char != '-' {
+			return false
+		}
+	}
+
+	return true
+}
+
+func normalizeXetraSymbol(symbol string) (string, error) {
+	normalized := strings.ToUpper(strings.TrimSpace(symbol))
+	if normalized == "" {
+		return "", fmt.Errorf("symbol is required")
+	}
+	if !hasValidYahooSymbolChars(normalized) || !strings.HasSuffix(normalized, xetraSymbolSuffix) {
+		return "", fmt.Errorf("only Xetra stock symbols ending in .DE are supported")
+	}
+
+	return normalized, nil
 }
 
 func fetch(ctx context.Context, url string) (*yahooResponse, error) {
@@ -111,6 +142,11 @@ func parsePoints(timestamps []int64, closes []*float64) []model.PricePoint {
 }
 
 func FetchLivePrice(symbol string) (price float64, previousClose float64, change float64, changePercent float64, ts int64, err error) {
+	symbol, err = normalizeXetraSymbol(symbol)
+	if err != nil {
+		return 0, 0, 0, 0, 0, err
+	}
+
 	url := fmt.Sprintf(
 		"https://query1.finance.yahoo.com/v8/finance/chart/%s?interval=1m&range=1d",
 		symbol,
@@ -142,6 +178,11 @@ func FetchBootstrapIntraday(symbol string) ([]model.PricePoint, string, error) {
 }
 
 func fetchIntraday5m(symbol, rangeParam string) ([]model.PricePoint, string, error) {
+	symbol, err := normalizeXetraSymbol(symbol)
+	if err != nil {
+		return nil, "", err
+	}
+
 	url := fmt.Sprintf(
 		"https://query1.finance.yahoo.com/v8/finance/chart/%s?interval=5m&range=%s",
 		symbol, rangeParam,
@@ -159,6 +200,11 @@ func fetchIntraday5m(symbol, rangeParam string) ([]model.PricePoint, string, err
 }
 
 func FetchBootstrapWeekly(symbol string) ([]model.PricePoint, string, error) {
+	symbol, err := normalizeXetraSymbol(symbol)
+	if err != nil {
+		return nil, "", err
+	}
+
 	url := fmt.Sprintf(
 		"https://query1.finance.yahoo.com/v8/finance/chart/%s?interval=1wk&period1=0&period2=9999999999",
 		symbol,
@@ -176,6 +222,11 @@ func FetchBootstrapWeekly(symbol string) ([]model.PricePoint, string, error) {
 }
 
 func FetchMeta(symbol string) (model.StockMeta, error) {
+	symbol, err := normalizeXetraSymbol(symbol)
+	if err != nil {
+		return model.StockMeta{}, err
+	}
+
 	url := fmt.Sprintf(
 		"https://query1.finance.yahoo.com/v8/finance/chart/%s?interval=1m&range=1d",
 		symbol,

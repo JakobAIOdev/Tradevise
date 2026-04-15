@@ -2,6 +2,7 @@ package jobs
 
 import (
 	"context"
+	"encoding/json"
 	"log"
 	"time"
 
@@ -23,18 +24,27 @@ func RunMetaRefresh(rdb *goredis.Client, pool *pgxpool.Pool) {
 		}
 
 		log.Printf("[MetaRefresh] immediate fetch requested for %s", symbol)
-		if err := refreshMeta(pool, symbol); err != nil {
+		if err := refreshMeta(rdb, pool, symbol); err != nil {
 			log.Printf("[MetaRefresh] fetch failed for %s: %s", symbol, err)
 		}
 		time.Sleep(300 * time.Millisecond)
 	}
 }
 
-func refreshMeta(pool *pgxpool.Pool, symbol string) error {
+func refreshMeta(rdb *goredis.Client, pool *pgxpool.Pool, symbol string) error {
 	meta, err := scraper.FetchMeta(symbol)
 	if err != nil {
 		return err
 	}
 
-	return db.UpsertStockMeta(pool, meta)
+	if err := db.UpsertStockMeta(pool, meta); err != nil {
+		return err
+	}
+
+	payload, err := json.Marshal(meta)
+	if err != nil {
+		return err
+	}
+
+	return rdb.Set(context.Background(), "stockmeta:"+symbol, payload, 24*time.Hour).Err()
 }

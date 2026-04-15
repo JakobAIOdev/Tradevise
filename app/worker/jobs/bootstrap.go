@@ -88,6 +88,13 @@ func bootstrap(rdb *goredis.Client, pool *pgxpool.Pool, sym *store.SymbolStore, 
 	if err := db.UpsertStockMeta(pool, meta); err != nil {
 		return err
 	}
+	metaPayload, err := json.Marshal(meta)
+	if err != nil {
+		return err
+	}
+	if err := rdb.Set(context.Background(), "stockmeta:"+symbol, metaPayload, 24*time.Hour).Err(); err != nil {
+		return err
+	}
 
 	name := meta.Name
 	if name == "" {

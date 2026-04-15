@@ -76,12 +76,16 @@ export class AuthController {
     return this.authService.logout(userId, tokenVersion);
   }
 
+  private getRefreshCookiePath() {
+    return this.configService.get<string>('REFRESH_COOKIE_PATH') ?? '/auth';
+  }
+
   private setRefreshToken(response: Response, refreshToken: string) {
     response.cookie('refresh_token', refreshToken, {
       httpOnly: true,
       secure: this.configService.get('NODE_ENV') === 'production',
       sameSite: 'lax',
-      path: '/auth',
+      path: this.getRefreshCookiePath(),
       maxAge: REFRESH_COOKIE_MAX_AGE_MS,
     });
   }
@@ -91,7 +95,7 @@ export class AuthController {
       httpOnly: true,
       secure: this.configService.get('NODE_ENV') === 'production',
       sameSite: 'lax',
-      path: '/auth',
+      path: this.getRefreshCookiePath(),
     });
   }
 }

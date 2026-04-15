@@ -414,16 +414,8 @@ export class StocksService {
     const meta = await this.prisma.stockMeta.findUnique({
       where: { symbol: normalizedSymbol },
     });
-
     if (!meta) {
       await this.redisService.requestImmediateStockMeta(normalizedSymbol);
-
-      for (let attempt = 0; attempt < 8; attempt += 1) {
-        await this.wait(250);
-        const refreshedMeta = await this.getCachedStockMeta(normalizedSymbol);
-        if (refreshedMeta) return refreshedMeta;
-      }
-
       return {
         symbol: normalizedSymbol,
         status: 'BOOTSTRAPPING',
@@ -485,10 +477,6 @@ export class StocksService {
     return typeof value === 'number' && Number.isFinite(value) && value > 0
       ? value
       : null;
-  }
-
-  private wait(ms: number) {
-    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
   private async ensureBootstrapStartedIfNeeded(

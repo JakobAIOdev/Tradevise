@@ -51,6 +51,22 @@ model TrackedSymbol {
   @@map("tracked_symbols")
 }
 
+model StockMeta {
+  symbol           String   @id @db.Text
+  name             String?  @db.Text
+  currency         String?  @db.Text
+  exchange         String?  @db.Text
+  previousClose    Decimal? @map("previous_close") @db.Decimal(14, 4)
+  dayHigh          Decimal? @map("day_high") @db.Decimal(14, 4)
+  dayLow           Decimal? @map("day_low") @db.Decimal(14, 4)
+  fiftyTwoWeekHigh Decimal? @map("fifty_two_week_high") @db.Decimal(14, 4)
+  fiftyTwoWeekLow  Decimal? @map("fifty_two_week_low") @db.Decimal(14, 4)
+  volume           Int?
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  @@map("stock_meta")
+}
+
 model PortfolioHolding {
   id           String   @id @default(cuid())
   userId       String

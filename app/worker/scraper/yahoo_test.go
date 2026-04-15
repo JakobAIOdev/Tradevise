@@ -160,23 +160,33 @@ func TestFetchReturnsErrorWhenResultIsEmpty(t *testing.T) {
 	}
 }
 
-func TestNormalizeXetraSymbol(t *testing.T) {
-	got, err := normalizeXetraSymbol(" apc.de ")
+func TestNormalizeSupportedEuroSymbolAcceptsXetra(t *testing.T) {
+	got, err := normalizeSupportedEuroSymbol(" apc.de ")
 	if err != nil {
-		t.Fatalf("normalizeXetraSymbol() returned error: %v", err)
+		t.Fatalf("normalizeSupportedEuroSymbol() returned error: %v", err)
 	}
 	if got != "APC.DE" {
-		t.Fatalf("normalizeXetraSymbol() = %q, want %q", got, "APC.DE")
+		t.Fatalf("normalizeSupportedEuroSymbol() = %q, want %q", got, "APC.DE")
 	}
 }
 
-func TestNormalizeXetraSymbolRejectsNonXetraSymbols(t *testing.T) {
-	_, err := normalizeXetraSymbol("AAPL")
-	if err == nil {
-		t.Fatal("normalizeXetraSymbol() returned nil error")
+func TestNormalizeSupportedEuroSymbolAcceptsFrankfurt(t *testing.T) {
+	got, err := normalizeSupportedEuroSymbol(" 1170.f ")
+	if err != nil {
+		t.Fatalf("normalizeSupportedEuroSymbol() returned error: %v", err)
 	}
-	if err.Error() != "only Xetra stock symbols ending in .DE are supported" {
-		t.Fatalf("normalizeXetraSymbol() error = %q, want Xetra error", err.Error())
+	if got != "1170.F" {
+		t.Fatalf("normalizeSupportedEuroSymbol() = %q, want %q", got, "1170.F")
+	}
+}
+
+func TestNormalizeSupportedEuroSymbolRejectsUnsupportedSymbols(t *testing.T) {
+	_, err := normalizeSupportedEuroSymbol("AAPL")
+	if err == nil {
+		t.Fatal("normalizeSupportedEuroSymbol() returned nil error")
+	}
+	if err.Error() != "only supported German or Austrian EUR stock symbols are supported" {
+		t.Fatalf("normalizeSupportedEuroSymbol() error = %q, want supported Euro error", err.Error())
 	}
 }
 

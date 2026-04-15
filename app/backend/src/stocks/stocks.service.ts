@@ -29,6 +29,11 @@ export type StockSuggestion = {
   logoUrl: string | null;
 };
 
+type StockSuggestionCandidate = {
+  rank: number;
+  suggestion: StockSuggestion;
+};
+
 type LivePriceEvent = {
   symbol: string;
   price?: number;
@@ -109,26 +114,15 @@ type LiveSubscription = {
   onMessage: (message: string) => void;
 };
 
-const XETRA_SYMBOL_SUFFIX = '.DE';
-const GERMAN_EXCHANGE_SUFFIXES = new Set([
-  '.BE',
-  '.BM',
-  '.DU',
-  '.F',
-  '.HA',
-  '.HM',
-  '.MU',
-  '.SG',
+const MIN_SYMBOL_LENGTH_WITH_SUFFIX = 4;
+const SUPPORTED_EURO_SYMBOL_SUFFIX_RANK = new Map([
+  ['.DE', 0], // Xetra
+  ['.F', 1], // Frankfurt
+  ['.VI', 2], // Vienna
 ]);
-const GERMAN_YAHOO_EXCHANGES = new Set([
-  'BER',
-  'DUS',
-  'FRA',
-  'HAM',
-  'HAN',
-  'MUN',
-  'STU',
-]);
+const SUPPORTED_EURO_SYMBOL_SUFFIXES = new Set(
+  SUPPORTED_EURO_SYMBOL_SUFFIX_RANK.keys(),
+);
 
 const DISCOVER_STOCKS: DiscoverStockDefinition[] = [
   {
@@ -176,48 +170,53 @@ function getSymbolSuffix(symbol: string): string | null {
   return symbol.slice(suffixStart);
 }
 
-function replaceSymbolSuffix(symbol: string, suffix: string): string {
+function getSymbolBase(symbol: string): string {
   const suffixStart = symbol.lastIndexOf('.');
-  if (suffixStart === -1) return `${symbol}${suffix}`;
+  if (suffixStart === -1) return symbol;
 
-  return `${symbol.slice(0, suffixStart)}${suffix}`;
+  return symbol.slice(0, suffixStart);
 }
 
 function hasValidYahooSymbolChars(symbol: string): boolean {
   return (
-    symbol.length > XETRA_SYMBOL_SUFFIX.length && /^[A-Z0-9.\-]+$/.test(symbol)
+    symbol.length >= MIN_SYMBOL_LENGTH_WITH_SUFFIX && /^[A-Z0-9.\-]+$/.test(symbol)
   );
 }
 
-function isXetraSymbol(symbol: string): boolean {
+function isSupportedEuroSymbol(symbol: string): boolean {
   const normalizedSymbol = normalizeSymbol(symbol);
+  const suffix = getSymbolSuffix(normalizedSymbol);
+
   return (
     hasValidYahooSymbolChars(normalizedSymbol) &&
-    getSymbolSuffix(normalizedSymbol) === XETRA_SYMBOL_SUFFIX
+    suffix !== null &&
+    SUPPORTED_EURO_SYMBOL_SUFFIXES.has(suffix)
   );
 }
 
-function toXetraSymbol(quote: YahooQuote): string | null {
+function toSupportedEuroSymbol(quote: YahooQuote): string | null {
   if (typeof quote.symbol !== 'string' || quote.quoteType !== 'EQUITY') {
     return null;
   }
 
   const symbol = normalizeSymbol(quote.symbol);
-  if (isXetraSymbol(symbol)) {
+  if (isSupportedEuroSymbol(symbol)) {
     return symbol;
   }
 
-  const exchange = quote.exchange?.trim().toUpperCase();
-  const suffix = getSymbolSuffix(symbol);
-  if (
-    suffix &&
-    GERMAN_EXCHANGE_SUFFIXES.has(suffix) &&
-    (!exchange || GERMAN_YAHOO_EXCHANGES.has(exchange))
-  ) {
-    return replaceSymbolSuffix(symbol, XETRA_SYMBOL_SUFFIX);
-  }
-
   return null;
+}
+
+function getQuoteName(quote: YahooQuote): string {
+  return quote.shortname || quote.longname || '';
+}
+
+function getSuggestionDedupeKey(quote: YahooQuote, symbol: string): string {
+  const normalizedName = getQuoteName(quote)
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, '');
+
+  return normalizedName || getSymbolBase(symbol);
 }
 
 function buildFallbackLogoUrl(symbol: string): string {
@@ -259,23 +258,36 @@ export class StocksService {
     const data = (await response.json()) as YahooSearchResponse;
     const quotes = data.quotes ?? [];
 
-    const suggestions = new Map<string, StockSuggestion>();
+    const suggestions = new Map<string, StockSuggestionCandidate>();
 
     for (const quote of quotes) {
-      const xetraSymbol = toXetraSymbol(quote);
-      if (!xetraSymbol || suggestions.has(xetraSymbol)) continue;
+      const supportedSymbol = toSupportedEuroSymbol(quote);
+      if (!supportedSymbol) continue;
 
-      suggestions.set(xetraSymbol, {
-        symbol: xetraSymbol,
-        name: quote.shortname || quote.longname || '',
-        type: 'STOCK',
-        logoUrl: quote.logoUrl ?? buildFallbackLogoUrl(xetraSymbol),
+      const suffix = getSymbolSuffix(supportedSymbol);
+      const rank = suffix
+        ? (SUPPORTED_EURO_SYMBOL_SUFFIX_RANK.get(suffix) ?? Number.MAX_SAFE_INTEGER)
+        : Number.MAX_SAFE_INTEGER;
+      const dedupeKey = getSuggestionDedupeKey(quote, supportedSymbol);
+      const existing = suggestions.get(dedupeKey);
+
+      if (existing && existing.rank <= rank) continue;
+
+      suggestions.set(dedupeKey, {
+        rank,
+        suggestion: {
+          symbol: supportedSymbol,
+          name: getQuoteName(quote),
+          type: 'STOCK',
+          logoUrl: quote.logoUrl ?? buildFallbackLogoUrl(supportedSymbol),
+        },
       });
-
-      if (suggestions.size >= 8) break;
     }
 
-    return [...suggestions.values()];
+    return [...suggestions.values()]
+      .sort((a, b) => a.rank - b.rank)
+      .slice(0, 8)
+      .map((candidate) => candidate.suggestion);
   }
 
   async getDiscoverStocks(): Promise<DiscoverStock[]> {
@@ -290,7 +302,7 @@ export class StocksService {
   }
 
   streamLivePrice(symbol: string): Observable<MessageEvent> {
-    const normalizedSymbol = this.parseXetraSymbol(symbol);
+    const normalizedSymbol = this.parseSupportedEuroSymbol(symbol);
 
     return new Observable<MessageEvent>((subscriber) => {
       const channel = `stocklive:${normalizedSymbol}`;
@@ -316,7 +328,7 @@ export class StocksService {
   }
 
   streamLivePrices(symbols: string[]): Observable<MessageEvent> {
-    const normalizedSymbols = this.parseUniqueXetraSymbols(symbols);
+    const normalizedSymbols = this.parseUniqueSupportedEuroSymbols(symbols);
 
     if (normalizedSymbols.length === 0) {
       throw new BadRequestException('At least one valid symbol is required');
@@ -355,7 +367,7 @@ export class StocksService {
     symbol: string,
     rangeInput: string,
   ): Promise<ChartHistoryResponse> {
-    const normalizedSymbol = this.parseXetraSymbol(symbol);
+    const normalizedSymbol = this.parseSupportedEuroSymbol(symbol);
 
     const range = this.parseChartRange(rangeInput);
     const status = await this.ensureBootstrapStartedIfNeeded(normalizedSymbol);
@@ -407,7 +419,7 @@ export class StocksService {
   }
 
   async getStatistics(symbol: string): Promise<StockStatisticsResponse> {
-    const normalizedSymbol = this.parseXetraSymbol(symbol);
+    const normalizedSymbol = this.parseSupportedEuroSymbol(symbol);
     const cachedMeta = await this.getCachedStockMeta(normalizedSymbol);
     if (cachedMeta) return cachedMeta;
 
@@ -501,27 +513,27 @@ export class StocksService {
     return 'BOOTSTRAPPING';
   }
 
-  private parseXetraSymbol(symbol: string): string {
+  private parseSupportedEuroSymbol(symbol: string): string {
     const normalizedSymbol = normalizeSymbol(symbol);
     if (!normalizedSymbol) {
       throw new BadRequestException('Symbol is required');
     }
-    if (!isXetraSymbol(normalizedSymbol)) {
+    if (!isSupportedEuroSymbol(normalizedSymbol)) {
       throw new BadRequestException(
-        `Only Xetra stock symbols ending in ${XETRA_SYMBOL_SUFFIX} are supported`,
+        'Only supported German or Austrian EUR stock symbols are supported',
       );
     }
 
     return normalizedSymbol;
   }
 
-  private parseUniqueXetraSymbols(symbols: string[]): string[] {
+  private parseUniqueSupportedEuroSymbols(symbols: string[]): string[] {
     return [
       ...new Set(
         symbols
           .map((symbol) => symbol.trim())
           .filter((symbol) => symbol.length > 0)
-          .map((symbol) => this.parseXetraSymbol(symbol)),
+          .map((symbol) => this.parseSupportedEuroSymbol(symbol)),
       ),
     ];
   }

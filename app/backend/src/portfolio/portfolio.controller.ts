@@ -1,8 +1,8 @@
 import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
 import { CurrentUser } from '../auth/decorators/current-user.decorator.js';
 import { AccessTokenGuard } from '../auth/guards/access-token.guard.js';
-import { BuyStockDto } from '../dto/buy-stock.dto.js';
-import { SellStockDto } from '../dto/sell-stock.dto.js';
+import { BuyStockDto } from './dto/buy-stock.dto.js';
+import { SellStockDto } from './dto/sell-stock.dto.js';
 import { PortfolioService } from './portfolio.service.js';
 
 @Controller('portfolio')

@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
-import { BuyStockDto } from '../dto/buy-stock.dto.js';
-import { SellStockDto } from '../dto/sell-stock.dto.js';
+import { BuyStockDto } from './dto/buy-stock.dto.js';
+import { SellStockDto } from './dto/sell-stock.dto.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { RedisService } from '../redis/redis.service.js';
 

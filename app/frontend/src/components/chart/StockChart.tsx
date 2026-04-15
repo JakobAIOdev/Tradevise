@@ -9,7 +9,7 @@ import {
 } from 'recharts'
 import { useState } from 'react'
 import { CustomTooltip } from './CustomTooltip'
-import { formatDate, formatPrice } from '../../utils/chart-helper'
+import { formatDate, formatPrice, getIntradayAxisConfig } from '../../utils/chart-helper'
 import { useStockChart, type ChartRange } from '../../hooks/useStockChart'
 
 interface StockChartProps {
@@ -21,6 +21,7 @@ const StockChart = ({ ticker, initialRange = '1D' }: StockChartProps) => {
   const [range, setRange] = useState<ChartRange>(initialRange)
 
   const { data, isPending } = useStockChart(ticker, range)
+  const intradayAxis = getIntradayAxisConfig()
 
   if (isPending) return <p>LOADING</p>
 
@@ -45,7 +46,8 @@ const StockChart = ({ ticker, initialRange = '1D' }: StockChartProps) => {
             type="number"
             dataKey="time"
             scale="time"
-            domain={['dataMin', 'dataMax']}
+            domain={range === '1D' ? intradayAxis.domain : ['dataMin', 'dataMax']}
+            ticks={range === '1D' ? intradayAxis.ticks : undefined}
             axisLine={false}
             tickLine={false}
             minTickGap={24}

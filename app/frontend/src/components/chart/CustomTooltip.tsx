@@ -1,21 +1,39 @@
 import { type TooltipContentProps } from 'recharts'
-import { formatDate, formatPrice } from '../../utils/chart-helper'
-import type { ChartRange } from '../../hooks/useStockChart'
+import { formatPrice } from '../../utils/chart-helper'
+import type { ChartHistorySource } from '../../hooks/useStockChart'
 
 type CustomTooltipProps = TooltipContentProps & {
-  range: ChartRange
+  source: ChartHistorySource
 }
 
-export function CustomTooltip({ active, payload, label, range }: CustomTooltipProps) {
+export function CustomTooltip({ active, payload, source }: CustomTooltipProps) {
   if (!active || !payload || payload.length === 0) return null
 
   const item = payload[0]
   const value = typeof item.value === 'number' ? item.value : Number(item.value)
 
+  const formatOptions: Intl.DateTimeFormatOptions =
+    source === 'intraday'
+      ? {
+          day: 'numeric',
+          month: 'short',
+          hour: 'numeric',
+          minute: '2-digit',
+        }
+      : {
+          day: 'numeric',
+          month: 'short',
+          year: 'numeric',
+        }
+
+  const formattedDate = new Intl.DateTimeFormat('de-AT', formatOptions).format(
+    item.payload.time * 1000,
+  )
+
   return (
     <div className="bg-surface px-3 py-2 border border-border rounded-xl">
       <p>{formatPrice(value)}</p>
-      <p className="text-muted">{formatDate(label as number, range)}</p>
+      <p className="text-muted">{formattedDate}</p>
     </div>
   )
 }

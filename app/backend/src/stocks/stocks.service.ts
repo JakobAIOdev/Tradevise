@@ -335,7 +335,7 @@ export class StocksService {
     if (range === '1D' || range === '1W' || range === '1M') {
       const timeFilterSql =
         range === '1D'
-          ? this.getCurrentUsMarketDayFilterSql(normalizedSymbol)
+          ? this.getCurrentXetraDayFilterSql(normalizedSymbol)
           : this.getRollingIntradayFilterSql(normalizedSymbol, range);
       const rows = await this.prisma.$queryRaw<ChartRow[]>(Prisma.sql`
         SELECT
@@ -498,27 +498,16 @@ export class StocksService {
     `;
   }
 
-  private getCurrentUsMarketDayFilterSql(symbol: string) {
+  private getCurrentXetraDayFilterSql(symbol: string) {
     return Prisma.sql`
       WHERE symbol = ${symbol}
         AND time >= (
-          (
-            CASE
-              WHEN EXTRACT(ISODOW FROM NOW() AT TIME ZONE 'America/New_York') = 6
-                THEN DATE(NOW() AT TIME ZONE 'America/New_York') - INTERVAL '1 day'
-              WHEN EXTRACT(ISODOW FROM NOW() AT TIME ZONE 'America/New_York') = 7
-                THEN DATE(NOW() AT TIME ZONE 'America/New_York') - INTERVAL '2 days'
-              WHEN (
-                EXTRACT(ISODOW FROM NOW() AT TIME ZONE 'America/New_York') = 1
-                AND (NOW() AT TIME ZONE 'America/New_York')::time < TIME '09:30'
-              )
-                THEN DATE(NOW() AT TIME ZONE 'America/New_York') - INTERVAL '3 days'
-              WHEN (NOW() AT TIME ZONE 'America/New_York')::time < TIME '09:30'
-                THEN DATE(NOW() AT TIME ZONE 'America/New_York') - INTERVAL '1 day'
-              ELSE DATE(NOW() AT TIME ZONE 'America/New_York')
-            END
-            + TIME '09:30'
-          ) AT TIME ZONE 'America/New_York'
+          DATE(NOW() AT TIME ZONE 'Europe/Berlin')
+          AT TIME ZONE 'Europe/Berlin'
+        )
+        AND time < (
+          (DATE(NOW() AT TIME ZONE 'Europe/Berlin') + INTERVAL '1 day')
+          AT TIME ZONE 'Europe/Berlin'
         )
     `;
   }

@@ -8,11 +8,13 @@ export type GraphPoint = {
   price: number
 }
 
+export type ChartHistorySource = 'intraday' | 'weekly'
+
 export type ChartHistoryResponse = {
   symbol: string
   range: ChartRange
   status: 'READY' | 'BOOTSTRAPPING'
-  source: 'intraday' | 'weekly'
+  source: ChartHistorySource
   points: GraphPoint[]
 }
 
@@ -35,6 +37,5 @@ export function useStockChart(ticker: string, range: ChartRange) {
     queryFn: () => fetchStockChart(ticker, range),
     enabled: ticker.trim().length > 0,
     staleTime: 1000 * 30,
-    placeholderData: (prev) => prev,
   })
 }

@@ -141,6 +141,16 @@ func parsePoints(timestamps []int64, closes []*float64) []model.PricePoint {
 	return points
 }
 
+func latestPositiveClose(closes []*float64) (float64, bool) {
+	for i := len(closes) - 1; i >= 0; i-- {
+		if closes[i] != nil && *closes[i] > 0 {
+			return *closes[i], true
+		}
+	}
+
+	return 0, false
+}
+
 func FetchLivePrice(symbol string) (price float64, previousClose float64, change float64, changePercent float64, ts int64, err error) {
 	symbol, err = normalizeXetraSymbol(symbol)
 	if err != nil {
@@ -159,6 +169,15 @@ func FetchLivePrice(symbol string) (price float64, previousClose float64, change
 
 	meta := r.Chart.Result[0].Meta
 	price = meta.RegularMarketPrice
+	if price <= 0 && len(r.Chart.Result[0].Indicators.Quote) > 0 {
+		if closePrice, ok := latestPositiveClose(r.Chart.Result[0].Indicators.Quote[0].Close); ok {
+			price = closePrice
+		}
+	}
+	if price <= 0 {
+		return 0, 0, 0, 0, 0, fmt.Errorf("no positive live price for %s", symbol)
+	}
+
 	previousClose = meta.ChartPreviousClose
 	change = price - previousClose
 	if previousClose != 0 {

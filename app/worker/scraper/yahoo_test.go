@@ -30,6 +30,32 @@ func TestParsePointsSkipsMissingCloseValues(t *testing.T) {
 	}
 }
 
+func TestLatestPositiveCloseUsesLastValidClose(t *testing.T) {
+	a := 10.5
+	b := 12.75
+	zero := 0.0
+
+	got, ok := latestPositiveClose([]*float64{&a, nil, &zero, &b, nil})
+	if !ok {
+		t.Fatal("latestPositiveClose() ok = false, want true")
+	}
+	if got != 12.75 {
+		t.Fatalf("latestPositiveClose() = %v, want 12.75", got)
+	}
+}
+
+func TestLatestPositiveCloseRejectsMissingPrices(t *testing.T) {
+	zero := 0.0
+
+	got, ok := latestPositiveClose([]*float64{nil, &zero})
+	if ok {
+		t.Fatal("latestPositiveClose() ok = true, want false")
+	}
+	if got != 0 {
+		t.Fatalf("latestPositiveClose() = %v, want 0", got)
+	}
+}
+
 func TestFetchDecodesYahooResponse(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get("Referer") != "https://finance.yahoo.com" {

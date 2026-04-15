@@ -1,13 +1,23 @@
 import StatCard from '../components/StatCard'
-import { Wallet, TrendingUp, BarChart2 } from 'lucide-react'
+import { BarChart2, TrendingUp, Wallet } from 'lucide-react'
 import { getTrend } from '../utils/trend'
 import PageTitle from '../components/PageTitle'
+import { usePortfolio } from '../hooks/usePortfolio'
+import { formatMoney, formatSignedMoney, formatSignedPercent } from '../utils/format'
 
-const todayChange = 97.04
-const totalValue = 9524.64
-const percentage = (todayChange / totalValue) * 100
+const INITIAL_PORTFOLIO_VALUE = 10000
 
 export default function HomePage() {
+  const { data: portfolio, isLoading, isError } = usePortfolio()
+
+  const cash = portfolio?.cash ?? 0
+  const totalValue = portfolio?.totalValue ?? 0
+  const todayChange = portfolio?.todayChange ?? 0
+  const todayChangePercent = portfolio?.todayChangePercent ?? 0
+  const totalProfitLoss = totalValue - INITIAL_PORTFOLIO_VALUE
+  const loadingValue = isLoading ? 'Loading...' : '0.00 €'
+  const errorSub = isError ? 'Could not load portfolio' : undefined
+
   return (
     <>
       <PageTitle title="Home" />
@@ -15,25 +25,25 @@ export default function HomePage() {
         <StatCard
           icon={TrendingUp}
           label="Today"
-          value={`${todayChange > 0 ? '+' : ''} ${todayChange.toFixed(2)} €`}
-          valueTrend={getTrend(todayChange)}
-          sub={`${todayChange > 0 ? '+' : ''} ${percentage.toFixed(2)} %`}
-          subTrend={getTrend(todayChange)}
+          value={portfolio ? formatSignedMoney(todayChange) : loadingValue}
+          valueTrend={portfolio ? getTrend(todayChange) : 'neutral'}
+          sub={errorSub ?? (portfolio ? formatSignedPercent(todayChangePercent) : 'Daily performance')}
+          subTrend={portfolio ? getTrend(todayChange) : 'neutral'}
         />
         <StatCard
           icon={Wallet}
           label="Total Portfolio"
-          value="9.524,64 €"
+          value={portfolio ? formatMoney(totalValue) : loadingValue}
           valueTrend="neutral"
-          sub="+ 2.524,64 €"
-          subTrend="positive"
+          sub={errorSub ?? formatSignedMoney(totalProfitLoss)}
+          subTrend={portfolio ? getTrend(totalProfitLoss) : 'neutral'}
         />
         <StatCard
           icon={BarChart2}
           label="Cash left"
-          value="1.836,15 €"
+          value={portfolio ? formatMoney(cash) : loadingValue}
           valueTrend="neutral"
-          sub="Available"
+          sub={errorSub ?? 'Available'}
           subTrend="neutral"
         />
       </div>

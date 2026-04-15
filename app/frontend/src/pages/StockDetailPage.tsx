@@ -8,11 +8,11 @@ import ActionButton from '../components/detail/ActionButton'
 import PositionSummary from '../components/detail/PositionSummary'
 import StockChart from '../components/chart/StockChart'
 import { useLocation, useParams } from 'react-router-dom'
-import { useTradeStock } from '../hooks/useTradeStock'
 import { useStockLivePrice } from '../hooks/useStockLivePrice'
 import { useStockStatistics } from '../hooks/useStockStatistics'
 import { usePortfolio } from '../hooks/usePortfolio'
 import type { Stock } from '../Types'
+import { useModalStore } from '../stores/useModalStore'
 
 type StockDetailLocationState = {
   stock?: Stock
@@ -20,20 +20,15 @@ type StockDetailLocationState = {
 
 export default function StockDetailPage() {
   const { ticker = '' } = useParams()
+  const { open } = useModalStore()
   const location = useLocation()
   const queryClient = useQueryClient()
   const [isFavorite, setIsFavorite] = useState(false)
-  const [tradeError, setTradeError] = useState<string | null>(null)
-  const [tradeSuccess, setTradeSuccess] = useState<string | null>(null)
   useStockLivePrice(ticker)
 
-  const buyStock = useTradeStock('buy')
-  const sellStock = useTradeStock('sell')
   const { data: statistics, isFetching: statisticsFetching } = useStockStatistics(ticker)
   const { data: portfolio, isFetching: portfolioFetching } = usePortfolio()
 
-  const parsedQuantity = Number(1)
-  const tradePending = buyStock.isPending || sellStock.isPending
   const holding = portfolio?.holdings.find((item) => item.symbol === ticker)
   const stateStock = (location.state as StockDetailLocationState | null)?.stock
   const discoverStock = queryClient
@@ -64,37 +59,6 @@ export default function StockDetailPage() {
     }
   }, [stock.name, stock.ticker])
 
-  function handleTrade(type: 'buy' | 'sell') {
-    setTradeError(null)
-    setTradeSuccess(null)
-
-    if (!ticker) {
-      setTradeError('No stock selected')
-      return
-    }
-
-    if (!Number.isFinite(parsedQuantity) || parsedQuantity <= 0) {
-      setTradeError('Quantity must be greater that 0')
-      return
-    }
-
-    const mutation = type === 'buy' ? buyStock : sellStock
-    mutation.mutate(
-      {
-        symbol: ticker,
-        quantity: parsedQuantity,
-      },
-      {
-        onSuccess: () => {
-          setTradeSuccess(type === 'buy' ? 'Bought successfully' : 'Sold successfully')
-        },
-        onError: (error) => {
-          setTradeError(error instanceof Error ? error.message : 'Transaction failed')
-        },
-      },
-    )
-  }
-
   return (
     <div className="max-w-300">
       <div className="flex justify-between items-center mb-6">
@@ -116,12 +80,16 @@ export default function StockDetailPage() {
             isLoading={statisticsFetching || statistics?.status === 'BOOTSTRAPPING'}
           />
           <div className="flex w-full gap-3 pt-4">
-            <ActionButton label="Buy" disabled={tradePending} action={() => handleTrade('buy')} />
-            <ActionButton label="Sell" disabled={tradePending} action={() => handleTrade('sell')} />
+            <ActionButton
+              label="Buy"
+              action={() => open('buy', { symbol: ticker, price: stock.price })}
+            />
+            <ActionButton
+              label="Sell"
+              disabled={!holding}
+              action={() => open('sell', { symbol: ticker, price: stock.price })}
+            />
           </div>
-          {tradePending && <p className="text-small text-muted">Processing trade...</p>}
-          {tradeError && <p className="text-small text-bearish">{tradeError}</p>}
-          {tradeSuccess && <p className="text-small text-bullish">{tradeSuccess}</p>}
         </div>
       </div>
       <div className="grid grid-cols-2 gap-6 mt-6">

@@ -3,11 +3,14 @@ package scraper
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"math/rand"
 	"net/http"
+	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"gitlab.ct.fh-salzburg.ac.at/fhs52920/tradevise/app/worker/model"
@@ -19,7 +22,14 @@ var userAgents = []string{
 	"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/118.0.0.0 Safari/537.36",
 }
 
-var httpClient = &http.Client{Timeout: 15 * time.Second}
+var httpClient = &http.Client{Timeout: 8 * time.Second}
+
+var yahooCooldownMu sync.Mutex
+var yahooCooldownUntil time.Time
+
+const yahooCooldownDuration = 60 * time.Second
+
+var ErrYahooCoolingDown = errors.New("yahoo provider cooldown active")
 
 const xetraSymbolSuffix = ".DE"
 
@@ -58,6 +68,59 @@ type yahooResponse struct {
 		} `json:"result"`
 		Error interface{} `json:"error"`
 	} `json:"chart"`
+}
+
+type yahooCooldownError struct {
+	until time.Time
+}
+
+func (e yahooCooldownError) Error() string {
+	return fmt.Sprintf("%s until %s", ErrYahooCoolingDown, e.until.Format(time.RFC3339))
+}
+
+func (e yahooCooldownError) Unwrap() error {
+	return ErrYahooCoolingDown
+}
+
+func IsYahooCoolingDownError(err error) bool {
+	return errors.Is(err, ErrYahooCoolingDown)
+}
+
+func IsYahooCoolingDown() bool {
+	return yahooCooldownErrorIfActive() != nil
+}
+
+func yahooCooldownErrorIfActive() error {
+	yahooCooldownMu.Lock()
+	defer yahooCooldownMu.Unlock()
+
+	now := time.Now()
+	if now.Before(yahooCooldownUntil) {
+		return yahooCooldownError{until: yahooCooldownUntil}
+	}
+
+	return nil
+}
+
+func markYahooCooldown() {
+	yahooCooldownMu.Lock()
+	defer yahooCooldownMu.Unlock()
+
+	until := time.Now().Add(yahooCooldownDuration)
+	if until.After(yahooCooldownUntil) {
+		yahooCooldownUntil = until
+	}
+}
+
+func shouldCooldownYahoo(err error) bool {
+	if err == nil {
+		return false
+	}
+	if errors.Is(err, context.DeadlineExceeded) || os.IsTimeout(err) {
+		return true
+	}
+
+	return strings.Contains(err.Error(), "rate limited")
 }
 
 func hasValidYahooSymbolChars(symbol string) bool {
@@ -128,6 +191,10 @@ func fetch(ctx context.Context, url string) (*yahooResponse, error) {
 }
 
 func fetchYahooChart(ctx context.Context, symbol, query string) (*yahooResponse, error) {
+	if err := yahooCooldownErrorIfActive(); err != nil {
+		return nil, err
+	}
+
 	urls := []string{
 		fmt.Sprintf("https://query1.finance.yahoo.com/v8/finance/chart/%s?%s", symbol, query),
 		fmt.Sprintf("https://query2.finance.yahoo.com/v8/finance/chart/%s?%s", symbol, query),
@@ -135,11 +202,22 @@ func fetchYahooChart(ctx context.Context, symbol, query string) (*yahooResponse,
 
 	var lastErr error
 	for _, url := range urls {
-		result, err := fetch(ctx, url)
+		if err := yahooCooldownErrorIfActive(); err != nil {
+			return nil, err
+		}
+
+		requestCtx, cancel := context.WithTimeout(ctx, 6*time.Second)
+		result, err := fetch(requestCtx, url)
+		cancel()
+
 		if err == nil {
 			return result, nil
 		}
 		lastErr = err
+		if shouldCooldownYahoo(err) {
+			markYahooCooldown()
+			return nil, err
+		}
 	}
 
 	return nil, lastErr

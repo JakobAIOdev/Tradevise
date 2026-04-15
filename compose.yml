@@ -1,16 +1,17 @@
 services:
   postgres:
     image: postgres:18-alpine
+    env_file:
+      - .env
     environment:
-      POSTGRES_DB: tradevise
-      POSTGRES_USER: tradevise
-      POSTGRES_PASSWORD: secret
-    ports:
-      - "5433:5432"
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      PGDATA: /var/lib/postgresql/data/pgdata
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U tradevise"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 5s
       timeout: 3s
       retries: 5
@@ -18,8 +19,6 @@ services:
   redis:
     image: redis:7-alpine
     container_name: tradevise-redis
-    ports:
-      - "6379:6379"
     volumes:
       - redis_data:/data
     command: redis-server --appendonly yes
@@ -29,19 +28,6 @@ services:
       timeout: 3s
       retries: 5
 
-  redis-ui:
-    image: patrikx3/p3x-redis-ui:latest
-    container_name: tradevise-redis-ui
-    platform: linux/arm64
-    ports:
-      - "7843:7843"
-    depends_on:
-      redis:
-        condition: service_healthy
-    volumes:
-      - redis_ui_data:/settings
-
 volumes:
   postgres_data:
   redis_data:
-  redis_ui_data:

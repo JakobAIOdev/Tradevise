@@ -1,0 +1,8 @@
+services:
+  postgres:
+    ports:
+      - "${POSTGRES_PUBLISHED_PORT:-5433}:5432"
+
+  redis:
+    ports:
+      - "${REDIS_PUBLISHED_PORT:-6379}:6379"

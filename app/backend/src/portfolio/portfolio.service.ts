@@ -26,7 +26,7 @@ export class PortfolioService {
 
     const enrichedHoldings = await Promise.all(
       holdings.map(async (holding) => {
-        const currentPrice = await this.getLatestPrice(holding.symbol);
+        const currentPrice = await this.getDisplayPrice(holding.symbol);
         const quantity = this.toNumber(holding.quantity);
         const averagePrice = this.toNumber(holding.averagePrice);
 
@@ -60,7 +60,7 @@ export class PortfolioService {
   async buyStock(userId: string, dto: BuyStockDto) {
     const symbol = this.normalizeSymbol(dto.symbol);
     const quantity = this.toDecimal(dto.quantity);
-    const price = this.toDecimal(await this.getLatestPrice(symbol));
+    const price = this.toDecimal(await this.getTradePrice(symbol));
     const total = quantity.mul(price);
 
     return this.prisma.$transaction(async (tx) => {
@@ -121,7 +121,7 @@ export class PortfolioService {
   async sellStock(userId: string, dto: SellStockDto) {
     const symbol = this.normalizeSymbol(dto.symbol);
     const quantity = this.toDecimal(dto.quantity);
-    const price = this.toDecimal(await this.getLatestPrice(symbol));
+    const price = this.toDecimal(await this.getTradePrice(symbol));
     const total = quantity.mul(price);
 
     return this.prisma.$transaction(async (tx) => {
@@ -207,7 +207,24 @@ export class PortfolioService {
     });
   }
 
-  private async getLatestPrice(symbol: string) {
+  private async getTradePrice(symbol: string) {
+    const cachedPrice = await this.getCachedLivePrice(symbol);
+    if (cachedPrice) return cachedPrice;
+
+    await this.redisService.requestImmediateLivePrice(symbol);
+
+    for (let attempt = 0; attempt < 10; attempt += 1) {
+      await this.wait(250);
+      const workerPrice = await this.getCachedLivePrice(symbol);
+      if (workerPrice) return workerPrice;
+    }
+
+    throw new BadRequestException(
+      `No live price available for ${symbol}. Make sure the worker is running.`,
+    );
+  }
+
+  private async getDisplayPrice(symbol: string) {
     const cachedPrice = await this.getCachedLivePrice(symbol);
     if (cachedPrice) return cachedPrice;
 
@@ -227,17 +244,7 @@ export class PortfolioService {
 
     if (weeklyPrice) return this.toNumber(weeklyPrice.price);
 
-    await this.redisService.requestImmediateLivePrice(symbol);
-
-    for (let attempt = 0; attempt < 10; attempt += 1) {
-      await this.wait(250);
-      const workerPrice = await this.getCachedLivePrice(symbol);
-      if (workerPrice) return workerPrice;
-    }
-
-    throw new BadRequestException(
-      `No price available for ${symbol}. Make sure the worker is running.`,
-    );
+    return this.getTradePrice(symbol);
   }
 
   private async getCachedLivePrice(symbol: string) {

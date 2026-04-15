@@ -49,9 +49,12 @@ export function useDiscoverStocks() {
         return stocks.map((stock) => {
           if (stock.ticker !== payload.symbol) return stock
 
+          const price =
+            typeof payload.price === 'number' && payload.price > 0 ? payload.price : stock.price
+
           return {
             ...stock,
-            price: payload.price ?? stock.price,
+            price,
             change: payload.changePercent ?? stock.change,
             changeValue: payload.change ?? stock.changeValue,
           }

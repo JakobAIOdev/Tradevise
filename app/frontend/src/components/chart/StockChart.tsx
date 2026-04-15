@@ -1,11 +1,11 @@
 import {
   LineChart,
-  CartesianGrid,
   Line,
   XAxis,
   YAxis,
   ResponsiveContainer,
   Tooltip,
+  ReferenceLine,
 } from 'recharts'
 import { useState } from 'react'
 import { CustomTooltip } from './CustomTooltip'
@@ -17,87 +17,113 @@ interface StockChartProps {
   initialRange?: ChartRange
 }
 
+const MIN_GRID_STEPS_PER_SIDE = 2
+const PRICE_AXIS_PADDING_MULTIPLIER = 1.06
+const MIN_PRICE_AXIS_DISTANCE = 0.05
+const AXIS_TICK_STYLE = {
+  fill: 'var(--color-text)',
+  fontSize: 13,
+  fontWeight: 400,
+} as const
+
+function getPriceAxisConfig(points: { price: number }[]) {
+  const baseline = points[0]?.price ?? 0
+
+  const prices = points.map((p) => p.price)
+  const min = Math.min(baseline, ...prices)
+  const max = Math.max(baseline, ...prices)
+
+  const dataDistance = Math.max(max - baseline, baseline - min)
+
+  const paddedDistance =
+    Math.max(dataDistance, MIN_PRICE_AXIS_DISTANCE) * PRICE_AXIS_PADDING_MULTIPLIER
+
+  const step = paddedDistance / 3
+
+  const stepsBelow = -Math.max(MIN_GRID_STEPS_PER_SIDE, Math.ceil((baseline - min) / step))
+  const stepsAbove = Math.max(MIN_GRID_STEPS_PER_SIDE, Math.ceil((max - baseline) / step))
+
+  const ticks = Array.from(
+    { length: stepsAbove - stepsBelow + 1 },
+    (_, index) => baseline + (stepsBelow + index) * step,
+  )
+
+  return {
+    baseline,
+    ticks,
+    domain: [ticks[0], ticks[ticks.length - 1]],
+  }
+}
+
 const StockChart = ({ ticker, initialRange = '1D' }: StockChartProps) => {
   const [range, setRange] = useState<ChartRange>(initialRange)
-
   const { data } = useStockChart(ticker, range)
+
+  const points = !data?.points
+    ? []
+    : data.points.map((point, index) => ({
+        ...point,
+        x: range === '1W' || range === '1M' ? index : point.time,
+      }))
+
   const intradayAxis = getIntradayAxisConfig()
-
-  const shouldCompressClosedHours = range === '1W' || range === '1M'
-  const chartKey = `${ticker}-${range}`
-
-  const chartPoints =
-    data?.points.map((point, index) => ({
-      ...point,
-      x: shouldCompressClosedHours ? index : point.time,
-    })) ?? []
+  const priceAxis = getPriceAxisConfig(points)
+  const gridTicks = priceAxis.ticks.filter((tick) => tick !== priceAxis.baseline)
 
   return (
     <div className="p-25 w-full h-full bg-surface border border-border rounded-xl">
       <div className="flex gap-8">
-        {(['1D', '1W', '1M', '1Y', 'ALL'] as ChartRange[]).map((r) => (
-          <button key={r} onClick={() => setRange(r)}>
+        {['1D', '1W', '1M', '1Y', 'ALL'].map((r) => (
+          <button key={r} onClick={() => setRange(r as ChartRange)}>
             {r}
           </button>
         ))}
       </div>
       <ResponsiveContainer width="100%" height="100%" className="pb-25">
-        <LineChart key={chartKey} data={chartPoints}>
-          <CartesianGrid
-            vertical={false}
-            className="stroke-sparkline opacity-30"
-            strokeDasharray="0"
-          />
-
+        <LineChart key={`${ticker}-${range}`} data={points}>
           <XAxis
             type="number"
             dataKey="x"
             scale={range === '1D' ? 'time' : 'linear'}
             domain={range === '1D' ? intradayAxis.domain : ['dataMin', 'dataMax']}
-            ticks={range === '1D' ? intradayAxis.ticks : undefined}
+            ticks={range === '1D' ? intradayAxis.domain : undefined}
             axisLine={false}
             tickLine={false}
             minTickGap={24}
-            tick={{
-              fill: 'var(--color-text)',
-              fontSize: 13,
-              fontWeight: 400,
-            }}
+            tick={AXIS_TICK_STYLE}
             dy={16}
             tickFormatter={(value) => {
-              const point = chartPoints[Math.round(value)]
+              const point = points[Math.round(value)]
               return formatDate(point?.time ?? value, range)
             }}
           />
-
           <YAxis
             type="number"
             orientation="right"
             dataKey="price"
             axisLine={false}
             tickLine={false}
-            tickCount={8}
+            ticks={priceAxis.ticks}
             width={72}
             dx={10}
-            tick={{
-              fill: 'var(--color-text)',
-              fontSize: 13,
-              fontWeight: 400,
-            }}
+            tick={AXIS_TICK_STYLE}
             tickFormatter={(value) => formatPrice(value)}
-            domain={([dataMin, dataMax]: readonly [number, number]) => {
-              if (dataMin === dataMax) {
-                const padding = dataMin === 0 ? 1 : Math.abs(dataMin) * 0.02
-                return [dataMin - padding, dataMax + padding]
-              }
-
-              const range = dataMax - dataMin
-              const padding = range * 0.12
-
-              return [dataMin - padding, dataMax + padding]
-            }}
+            domain={priceAxis.domain}
           />
-
+          {gridTicks.map((tick) => (
+            <ReferenceLine
+              key={tick}
+              y={tick}
+              stroke="var(--color-sparkline)"
+              strokeOpacity={0.1}
+            />
+          ))}
+          <ReferenceLine
+            y={priceAxis.baseline}
+            stroke="var(--color-text)"
+            strokeOpacity={0.35}
+            strokeDasharray="4 4"
+          />
           <Line
             type="monotone"
             dataKey="price"

@@ -10,7 +10,7 @@ export function getIntradayAxisConfig(now = new Date()) {
 
   return {
     domain: [atTime(9), atTime(17, 30)] as const,
-    ticks: [atTime(9), atTime(11), atTime(13), atTime(15), atTime(17, 30)],
+    ticks: [atTime(9), atTime(11), atTime(13), atTime(15), atTime(17)],
   }
 }
 

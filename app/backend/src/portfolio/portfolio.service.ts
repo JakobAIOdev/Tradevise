@@ -8,6 +8,13 @@ import { RedisService } from '../redis/redis.service.js';
 type LivePriceEvent = {
   symbol: string;
   price?: number;
+  previousClose?: number;
+};
+
+type TodayTransaction = {
+  type: 'BUY' | 'SELL';
+  quantity: number;
+  price: number;
 };
 
 @Injectable()
@@ -23,12 +30,20 @@ export class PortfolioService {
       where: { userId },
       orderBy: { symbol: 'asc' },
     });
+    const todayTransactions = await this.getTodayTransactionsBySymbol(userId);
 
     const enrichedHoldings = await Promise.all(
       holdings.map(async (holding) => {
         const currentPrice = await this.getDisplayPrice(holding.symbol);
+        const previousClose = await this.getPreviousClose(holding.symbol);
         const quantity = this.toNumber(holding.quantity);
         const averagePrice = this.toNumber(holding.averagePrice);
+        const todayPerformance = this.calculateTodayPerformance({
+          currentPrice,
+          currentQuantity: quantity,
+          previousClose,
+          transactions: todayTransactions.get(holding.symbol) ?? [],
+        });
 
         return {
           id: holding.id,
@@ -36,8 +51,11 @@ export class PortfolioService {
           quantity,
           averagePrice,
           currentPrice,
+          previousClose,
           marketValue: quantity * currentPrice,
           profitLoss: quantity * (currentPrice - averagePrice),
+          todayChange: todayPerformance.change,
+          todayBaselineValue: todayPerformance.baselineValue,
         };
       }),
     );
@@ -46,6 +64,16 @@ export class PortfolioService {
       (sum, holding) => sum + holding.marketValue,
       0,
     );
+    const todayChange = enrichedHoldings.reduce(
+      (sum, holding) => sum + holding.todayChange,
+      0,
+    );
+    const todayBaselineValue = enrichedHoldings.reduce(
+      (sum, holding) => sum + holding.todayBaselineValue,
+      0,
+    );
+    const todayChangePercent =
+      todayBaselineValue > 0 ? (todayChange / todayBaselineValue) * 100 : 0;
     const cash = this.toNumber(portfolio.cash);
 
     return {
@@ -53,7 +81,9 @@ export class PortfolioService {
       cash,
       holdingsValue,
       totalValue: cash + holdingsValue,
-      holdings: enrichedHoldings,
+      todayChange,
+      todayChangePercent,
+      holdings: enrichedHoldings.map(({ todayBaselineValue, ...holding }) => holding),
     };
   }
 
@@ -207,6 +237,101 @@ export class PortfolioService {
     });
   }
 
+  private async getTodayTransactionsBySymbol(userId: string) {
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+
+    const transactions = await this.prisma.transaction.findMany({
+      where: {
+        userId,
+        createdAt: { gte: todayStart },
+      },
+      orderBy: { createdAt: 'asc' },
+      select: {
+        symbol: true,
+        type: true,
+        quantity: true,
+        price: true,
+      },
+    });
+
+    const transactionsBySymbol = new Map<string, TodayTransaction[]>();
+
+    for (const transaction of transactions) {
+      const existing = transactionsBySymbol.get(transaction.symbol) ?? [];
+      existing.push({
+        type: transaction.type,
+        quantity: this.toNumber(transaction.quantity),
+        price: this.toNumber(transaction.price),
+      });
+      transactionsBySymbol.set(transaction.symbol, existing);
+    }
+
+    return transactionsBySymbol;
+  }
+
+  private calculateTodayPerformance({
+    currentPrice,
+    currentQuantity,
+    previousClose,
+    transactions,
+  }: {
+    currentPrice: number;
+    currentQuantity: number;
+    previousClose: number | null;
+    transactions: TodayTransaction[];
+  }) {
+    const boughtToday = transactions
+      .filter((transaction) => transaction.type === 'BUY')
+      .reduce((sum, transaction) => sum + transaction.quantity, 0);
+    const soldToday = transactions
+      .filter((transaction) => transaction.type === 'SELL')
+      .reduce((sum, transaction) => sum + transaction.quantity, 0);
+    const startingQuantity = Math.max(
+      currentQuantity - boughtToday + soldToday,
+      0,
+    );
+    const startingBaseline =
+      previousClose && previousClose > 0 ? previousClose : currentPrice;
+    const lots: { quantity: number; baseline: number }[] =
+      startingQuantity > 0
+        ? [{ quantity: startingQuantity, baseline: startingBaseline }]
+        : [];
+    let change = 0;
+    let baselineValue = startingQuantity * startingBaseline;
+
+    for (const transaction of transactions) {
+      if (transaction.type === 'BUY') {
+        lots.push({
+          quantity: transaction.quantity,
+          baseline: transaction.price,
+        });
+        baselineValue += transaction.quantity * transaction.price;
+        continue;
+      }
+
+      let remainingToSell = transaction.quantity;
+      while (remainingToSell > 0 && lots.length > 0) {
+        const lot = lots[0];
+        const soldQuantity = Math.min(lot.quantity, remainingToSell);
+        change += soldQuantity * (transaction.price - lot.baseline);
+        lot.quantity -= soldQuantity;
+        remainingToSell -= soldQuantity;
+
+        if (lot.quantity <= 0) {
+          lots.shift();
+        }
+      }
+    }
+
+    change += lots.reduce(
+      (sum, lot) => sum + lot.quantity * (currentPrice - lot.baseline),
+      0,
+    );
+
+    return { change, baselineValue };
+  }
+
   private async getTradePrice(symbol: string) {
     const cachedPrice = await this.getCachedLivePrice(symbol);
     if (cachedPrice) return cachedPrice;
@@ -245,6 +370,26 @@ export class PortfolioService {
     if (weeklyPrice) return this.toNumber(weeklyPrice.price);
 
     return this.getTradePrice(symbol);
+  }
+
+  private async getPreviousClose(symbol: string) {
+    const cachedPrice = await this.redisService.getJson<LivePriceEvent>(
+      `stocklatest:${symbol}`,
+    );
+
+    if (
+      typeof cachedPrice?.previousClose === 'number' &&
+      cachedPrice.previousClose > 0
+    ) {
+      return cachedPrice.previousClose;
+    }
+
+    const meta = await this.prisma.stockMeta.findUnique({
+      where: { symbol },
+      select: { previousClose: true },
+    });
+
+    return meta?.previousClose ? this.toNumber(meta.previousClose) : null;
   }
 
   private async getCachedLivePrice(symbol: string) {

@@ -1,18 +1,9 @@
 import type { PortfolioHolding } from '../../Types'
+import { formatMoney, formatShares } from '../../utils/format'
 
 type PositionSummaryProps = {
   holding?: PortfolioHolding
   isLoading?: boolean
-}
-
-function formatMoney(value: number) {
-  return `${value.toFixed(2)} €`
-}
-
-function formatQuantity(value: number) {
-  return new Intl.NumberFormat('en-US', {
-    maximumFractionDigits: 6,
-  }).format(value)
 }
 
 export default function PositionSummary({ holding, isLoading = false }: PositionSummaryProps) {
@@ -45,7 +36,7 @@ export default function PositionSummary({ holding, isLoading = false }: Position
           </div>
           <div>
             <p className="text-xs text-muted">Shares</p>
-            <p className="text-body text-text tabular-nums">{formatQuantity(holding.quantity)}</p>
+            <p className="text-body text-text tabular-nums">{formatShares(holding.quantity)}</p>
           </div>
           <div>
             <p className="text-xs text-muted">Avg Buy</p>

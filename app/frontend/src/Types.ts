@@ -42,8 +42,10 @@ export type PortfolioHolding = {
   quantity: number
   averagePrice: number
   currentPrice: number
+  previousClose: number | null
   marketValue: number
   profitLoss: number
+  todayChange: number
 }
 
 export type Portfolio = {
@@ -51,5 +53,7 @@ export type Portfolio = {
   cash: number
   holdingsValue: number
   totalValue: number
+  todayChange: number
+  todayChangePercent: number
   holdings: PortfolioHolding[]
 }

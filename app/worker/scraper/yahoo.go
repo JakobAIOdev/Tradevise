@@ -31,7 +31,13 @@ const yahooCooldownDuration = 60 * time.Second
 
 var ErrYahooCoolingDown = errors.New("yahoo provider cooldown active")
 
-const xetraSymbolSuffix = ".DE"
+const minSymbolLengthWithSuffix = 4
+
+var supportedEuroSymbolSuffixes = map[string]bool{
+	".DE": true,
+	".F":  true,
+	".VI": true,
+}
 
 type yahooResponse struct {
 	Chart struct {
@@ -124,7 +130,7 @@ func shouldCooldownYahoo(err error) bool {
 }
 
 func hasValidYahooSymbolChars(symbol string) bool {
-	if len(symbol) <= len(xetraSymbolSuffix) {
+	if len(symbol) < minSymbolLengthWithSuffix {
 		return false
 	}
 
@@ -139,16 +145,35 @@ func hasValidYahooSymbolChars(symbol string) bool {
 	return true
 }
 
-func normalizeXetraSymbol(symbol string) (string, error) {
+func getSymbolSuffix(symbol string) string {
+	suffixStart := strings.LastIndex(symbol, ".")
+	if suffixStart == -1 || suffixStart == len(symbol)-1 {
+		return ""
+	}
+
+	return symbol[suffixStart:]
+}
+
+func normalizeSupportedEuroSymbol(symbol string) (string, error) {
 	normalized := strings.ToUpper(strings.TrimSpace(symbol))
 	if normalized == "" {
 		return "", fmt.Errorf("symbol is required")
 	}
-	if !hasValidYahooSymbolChars(normalized) || !strings.HasSuffix(normalized, xetraSymbolSuffix) {
-		return "", fmt.Errorf("only Xetra stock symbols ending in .DE are supported")
+
+	suffix := getSymbolSuffix(normalized)
+	if !hasValidYahooSymbolChars(normalized) || !supportedEuroSymbolSuffixes[suffix] {
+		return "", fmt.Errorf("only supported German or Austrian EUR stock symbols are supported")
 	}
 
 	return normalized, nil
+}
+
+func ensureEUR(currency, symbol string) error {
+	if strings.ToUpper(strings.TrimSpace(currency)) != "EUR" {
+		return fmt.Errorf("unsupported currency %q for %s", currency, symbol)
+	}
+
+	return nil
 }
 
 func fetch(ctx context.Context, url string) (*yahooResponse, error) {
@@ -248,7 +273,7 @@ func latestPositiveClose(closes []*float64) (float64, bool) {
 }
 
 func FetchLivePrice(symbol string) (price float64, previousClose float64, change float64, changePercent float64, ts int64, err error) {
-	symbol, err = normalizeXetraSymbol(symbol)
+	symbol, err = normalizeSupportedEuroSymbol(symbol)
 	if err != nil {
 		return 0, 0, 0, 0, 0, err
 	}
@@ -259,6 +284,10 @@ func FetchLivePrice(symbol string) (price float64, previousClose float64, change
 	}
 
 	meta := r.Chart.Result[0].Meta
+	if err := ensureEUR(meta.Currency, symbol); err != nil {
+		return 0, 0, 0, 0, 0, err
+	}
+
 	price = meta.RegularMarketPrice
 	if price <= 0 && len(r.Chart.Result[0].Indicators.Quote) > 0 {
 		if closePrice, ok := latestPositiveClose(r.Chart.Result[0].Indicators.Quote[0].Close); ok {
@@ -288,7 +317,7 @@ func FetchBootstrapIntraday(symbol string) ([]model.PricePoint, string, error) {
 }
 
 func fetchIntraday5m(symbol, rangeParam string) ([]model.PricePoint, string, error) {
-	symbol, err := normalizeXetraSymbol(symbol)
+	symbol, err := normalizeSupportedEuroSymbol(symbol)
 	if err != nil {
 		return nil, "", err
 	}
@@ -299,13 +328,17 @@ func fetchIntraday5m(symbol, rangeParam string) ([]model.PricePoint, string, err
 	}
 
 	result := r.Chart.Result[0]
+	if err := ensureEUR(result.Meta.Currency, symbol); err != nil {
+		return nil, "", err
+	}
+
 	points := parsePoints(result.Timestamp, result.Indicators.Quote[0].Close)
 
 	return points, result.Meta.Currency, nil
 }
 
 func FetchBootstrapWeekly(symbol string) ([]model.PricePoint, string, error) {
-	symbol, err := normalizeXetraSymbol(symbol)
+	symbol, err := normalizeSupportedEuroSymbol(symbol)
 	if err != nil {
 		return nil, "", err
 	}
@@ -316,13 +349,17 @@ func FetchBootstrapWeekly(symbol string) ([]model.PricePoint, string, error) {
 	}
 
 	result := r.Chart.Result[0]
+	if err := ensureEUR(result.Meta.Currency, symbol); err != nil {
+		return nil, "", err
+	}
+
 	points := parsePoints(result.Timestamp, result.Indicators.Quote[0].Close)
 
 	return points, result.Meta.Currency, nil
 }
 
 func FetchMeta(symbol string) (model.StockMeta, error) {
-	symbol, err := normalizeXetraSymbol(symbol)
+	symbol, err := normalizeSupportedEuroSymbol(symbol)
 	if err != nil {
 		return model.StockMeta{}, err
 	}
@@ -333,6 +370,9 @@ func FetchMeta(symbol string) (model.StockMeta, error) {
 	}
 
 	m := r.Chart.Result[0].Meta
+	if err := ensureEUR(m.Currency, symbol); err != nil {
+		return model.StockMeta{}, err
+	}
 
 	meta := model.StockMeta{
 		Symbol:           m.Symbol,

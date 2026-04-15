@@ -5,11 +5,13 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import DetailHeader from '../components/detail/DetailHeader'
 import KeyStatistics from '../components/detail/KeyStatistics'
 import ActionButton from '../components/detail/ActionButton'
+import PositionSummary from '../components/detail/PositionSummary'
 import StockChart from '../components/chart/StockChart'
 import { useLocation, useParams } from 'react-router-dom'
 import { useTradeStock } from '../hooks/useTradeStock'
 import { useStockLivePrice } from '../hooks/useStockLivePrice'
 import { useStockStatistics } from '../hooks/useStockStatistics'
+import { usePortfolio } from '../hooks/usePortfolio'
 import type { Stock } from '../Types'
 
 type StockDetailLocationState = {
@@ -28,9 +30,11 @@ export default function StockDetailPage() {
   const buyStock = useTradeStock('buy')
   const sellStock = useTradeStock('sell')
   const { data: statistics, isFetching: statisticsFetching } = useStockStatistics(ticker)
+  const { data: portfolio, isFetching: portfolioFetching } = usePortfolio()
 
   const parsedQuantity = Number(1)
   const tradePending = buyStock.isPending || sellStock.isPending
+  const holding = portfolio?.holdings.find((item) => item.symbol === ticker)
   const stateStock = (location.state as StockDetailLocationState | null)?.stock
   const discoverStock = queryClient
     .getQueryData<Stock[]>(['discover-stocks'])
@@ -121,10 +125,8 @@ export default function StockDetailPage() {
         </div>
       </div>
       <div className="grid grid-cols-2 gap-6 mt-6">
-        <div className="bg-surface h-40.5 border border-border rounded-xl px-25 pt-5">
-          <p className="text-text text-body">Your Position</p>
-        </div>
-        <div className="bg-surface h-40.5 border border-border rounded-xl px-25 pt-5">
+        <PositionSummary holding={holding} isLoading={portfolioFetching && !portfolio} />
+        <div className="bg-surface h-45 border border-border rounded-xl px-25 pt-5">
           <div className="flex justify-between">
             <p className="text-text text-body">About {stock.name}</p>
             <ExternalLink size={20} strokeWidth={1.5} className="text-muted" />

@@ -35,3 +35,21 @@ export type StockStatistics = {
   volume: number | null
   updatedAt: string | null
 }
+
+export type PortfolioHolding = {
+  id: string
+  symbol: string
+  quantity: number
+  averagePrice: number
+  currentPrice: number
+  marketValue: number
+  profitLoss: number
+}
+
+export type Portfolio = {
+  userId: string
+  cash: number
+  holdingsValue: number
+  totalValue: number
+  holdings: PortfolioHolding[]
+}

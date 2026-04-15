@@ -66,6 +66,21 @@ type ChartHistoryResponse = {
   points: GraphPoint[];
 };
 
+type StockStatisticsResponse = {
+  symbol: string;
+  status: 'READY' | 'BOOTSTRAPPING';
+  name: string | null;
+  currency: string | null;
+  exchange: string | null;
+  previousClose: number | null;
+  dayHigh: number | null;
+  dayLow: number | null;
+  fiftyTwoWeekHigh: number | null;
+  fiftyTwoWeekLow: number | null;
+  volume: number | null;
+  updatedAt: Date | null;
+};
+
 type ChartRow = {
   time: bigint | number | string;
   price: number;
@@ -375,6 +390,47 @@ export class StocksService {
       status,
       source: 'weekly',
       points: rows.map((row) => this.mapChartRow(row)),
+    };
+  }
+
+  async getStatistics(symbol: string): Promise<StockStatisticsResponse> {
+    const normalizedSymbol = this.parseXetraSymbol(symbol);
+    const meta = await this.prisma.stockMeta.findUnique({
+      where: { symbol: normalizedSymbol },
+    });
+
+    if (!meta) {
+      await this.redisService.requestImmediateStockMeta(normalizedSymbol);
+
+      return {
+        symbol: normalizedSymbol,
+        status: 'BOOTSTRAPPING',
+        name: null,
+        currency: null,
+        exchange: null,
+        previousClose: null,
+        dayHigh: null,
+        dayLow: null,
+        fiftyTwoWeekHigh: null,
+        fiftyTwoWeekLow: null,
+        volume: null,
+        updatedAt: null,
+      };
+    }
+
+    return {
+      symbol: normalizedSymbol,
+      status: 'READY',
+      name: meta.name,
+      currency: meta.currency,
+      exchange: meta.exchange,
+      previousClose: meta.previousClose?.toNumber() ?? null,
+      dayHigh: meta.dayHigh?.toNumber() ?? null,
+      dayLow: meta.dayLow?.toNumber() ?? null,
+      fiftyTwoWeekHigh: meta.fiftyTwoWeekHigh?.toNumber() ?? null,
+      fiftyTwoWeekLow: meta.fiftyTwoWeekLow?.toNumber() ?? null,
+      volume: meta.volume,
+      updatedAt: meta.updatedAt,
     };
   }
 

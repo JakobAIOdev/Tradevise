@@ -1,6 +1,6 @@
 import type { Stock } from '../../Types'
 import StockLogo from '../StockLogo'
-import { ChevronDown, ChevronUp } from 'lucide-react'
+import { ChevronDown, ChevronUp, LoaderCircle } from 'lucide-react'
 
 export default function DetailHeader({
   name,
@@ -11,6 +11,9 @@ export default function DetailHeader({
   changeValue,
   positiveChange,
 }: Stock) {
+  const positive = positiveChange ?? change >= 0
+  const hasPrice = typeof price === 'number' && price > 0
+
   return (
     <div className="pt-25">
       <div className="grid grid-cols-[minmax(0,1fr)_19.6875rem] gap-6">
@@ -24,24 +27,32 @@ export default function DetailHeader({
           </div>
 
           <div className="text-right">
-            <span className="text-h2 text-text">{price} €</span>
+            <span className="flex min-h-10 items-center justify-end text-h2 text-text">
+              {hasPrice ? (
+                `${price.toFixed(2)} €`
+              ) : (
+                <LoaderCircle
+                  size={28}
+                  strokeWidth={1.5}
+                  className="animate-spin text-muted [animation-duration:900ms] motion-reduce:animate-none"
+                />
+              )}
+            </span>
             <div className="flex flex-row gap-5 justify-end">
-              <span
-                className={positiveChange ? 'text-bullish text-body' : 'text-bearish text-body'}
-              >
-                {positiveChange ? '+ ' : '- '}
-                {changeValue} €
+              <span className={positive ? 'text-bullish text-body' : 'text-bearish text-body'}>
+                {positive ? '+ ' : '- '}
+                {typeof changeValue === 'number' ? Math.abs(changeValue).toFixed(2) : '0.00'} €
               </span>
               <span
-                className={`flex items-center gap-0.5 text-body ${positiveChange ? 'text-bullish' : 'text-bearish'}`}
+                className={`flex items-center gap-0.5 text-body ${positive ? 'text-bullish' : 'text-bearish'}`}
               >
                 (
-                {positiveChange ? (
+                {positive ? (
                   <ChevronUp size={16} strokeWidth={2.5} />
                 ) : (
                   <ChevronDown size={16} strokeWidth={2.5} />
                 )}
-                {change} % )
+                {Math.abs(change).toFixed(2)} % )
               </span>
             </div>
           </div>

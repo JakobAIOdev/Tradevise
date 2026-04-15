@@ -3,6 +3,7 @@ package jobs
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"log"
 	"time"
 
@@ -65,6 +66,9 @@ func publishLivePrice(rdb *goredis.Client, symbol string) error {
 	price, previousClose, change, changePercent, ts, err := scraper.FetchLivePrice(symbol)
 	if err != nil {
 		return err
+	}
+	if price <= 0 {
+		return errors.New("invalid live price")
 	}
 
 	event := model.LivePriceEvent{

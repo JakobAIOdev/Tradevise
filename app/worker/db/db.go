@@ -68,3 +68,44 @@ func SetSymbolDone(pool *pgxpool.Pool, symbol, currency, name string) error {
     )
     return err
 }
+
+func UpsertStockMeta(pool *pgxpool.Pool, meta model.StockMeta) error {
+    _, err := pool.Exec(context.Background(),
+        `INSERT INTO stock_meta (
+             symbol,
+             name,
+             currency,
+             exchange,
+             previous_close,
+             day_high,
+             day_low,
+             fifty_two_week_high,
+             fifty_two_week_low,
+             volume,
+             updated_at
+         )
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW())
+         ON CONFLICT (symbol) DO UPDATE
+         SET name = EXCLUDED.name,
+             currency = EXCLUDED.currency,
+             exchange = EXCLUDED.exchange,
+             previous_close = EXCLUDED.previous_close,
+             day_high = EXCLUDED.day_high,
+             day_low = EXCLUDED.day_low,
+             fifty_two_week_high = EXCLUDED.fifty_two_week_high,
+             fifty_two_week_low = EXCLUDED.fifty_two_week_low,
+             volume = EXCLUDED.volume,
+             updated_at = NOW()`,
+        meta.Symbol,
+        meta.Name,
+        meta.Currency,
+        meta.Exchange,
+        meta.PreviousClose,
+        meta.DayHigh,
+        meta.DayLow,
+        meta.FiftyTwoWeekHigh,
+        meta.FiftyTwoWeekLow,
+        meta.Volume,
+    )
+    return err
+}

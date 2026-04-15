@@ -12,7 +12,7 @@ export class AuthError extends Error {
   }
 }
 
-async function refreshAccessToken(): Promise<string | null> {
+export async function refreshAccessToken(): Promise<string | null> {
   if (!refreshPromise) {
     refreshPromise = fetch(buildApiUrl('/auth/refresh'), {
       method: 'POST',

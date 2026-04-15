@@ -54,7 +54,11 @@ export class RedisService implements OnModuleDestroy {
   }
 
   async requestImmediateLivePrice(symbol: string) {
-    await this.client.publish('stocklive:fetchnow', symbol);
+    const requestKey = `stocklive:requested:${symbol}`;
+    const result = await this.client.set(requestKey, '1', 'EX', 20, 'NX');
+    if (result === 'OK') {
+      await this.client.publish('stocklive:fetchnow', symbol);
+    }
   }
 
   async requestImmediateStockMeta(symbol: string) {

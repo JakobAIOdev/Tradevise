@@ -19,7 +19,7 @@ var userAgents = []string{
 	"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/118.0.0.0 Safari/537.36",
 }
 
-var httpClient = &http.Client{Timeout: 10 * time.Second}
+var httpClient = &http.Client{Timeout: 15 * time.Second}
 
 const xetraSymbolSuffix = ".DE"
 
@@ -127,6 +127,24 @@ func fetch(ctx context.Context, url string) (*yahooResponse, error) {
 	return &result, nil
 }
 
+func fetchYahooChart(ctx context.Context, symbol, query string) (*yahooResponse, error) {
+	urls := []string{
+		fmt.Sprintf("https://query1.finance.yahoo.com/v8/finance/chart/%s?%s", symbol, query),
+		fmt.Sprintf("https://query2.finance.yahoo.com/v8/finance/chart/%s?%s", symbol, query),
+	}
+
+	var lastErr error
+	for _, url := range urls {
+		result, err := fetch(ctx, url)
+		if err == nil {
+			return result, nil
+		}
+		lastErr = err
+	}
+
+	return nil, lastErr
+}
+
 func parsePoints(timestamps []int64, closes []*float64) []model.PricePoint {
 	points := make([]model.PricePoint, 0, len(timestamps))
 	for i, ts := range timestamps {
@@ -157,12 +175,7 @@ func FetchLivePrice(symbol string) (price float64, previousClose float64, change
 		return 0, 0, 0, 0, 0, err
 	}
 
-	url := fmt.Sprintf(
-		"https://query1.finance.yahoo.com/v8/finance/chart/%s?interval=1m&range=1d",
-		symbol,
-	)
-
-	r, err := fetch(context.Background(), url)
+	r, err := fetchYahooChart(context.Background(), symbol, "interval=1m&range=1d")
 	if err != nil {
 		return 0, 0, 0, 0, 0, err
 	}
@@ -202,12 +215,7 @@ func fetchIntraday5m(symbol, rangeParam string) ([]model.PricePoint, string, err
 		return nil, "", err
 	}
 
-	url := fmt.Sprintf(
-		"https://query1.finance.yahoo.com/v8/finance/chart/%s?interval=5m&range=%s",
-		symbol, rangeParam,
-	)
-
-	r, err := fetch(context.Background(), url)
+	r, err := fetchYahooChart(context.Background(), symbol, fmt.Sprintf("interval=5m&range=%s", rangeParam))
 	if err != nil {
 		return nil, "", err
 	}
@@ -224,12 +232,7 @@ func FetchBootstrapWeekly(symbol string) ([]model.PricePoint, string, error) {
 		return nil, "", err
 	}
 
-	url := fmt.Sprintf(
-		"https://query1.finance.yahoo.com/v8/finance/chart/%s?interval=1wk&period1=0&period2=9999999999",
-		symbol,
-	)
-
-	r, err := fetch(context.Background(), url)
+	r, err := fetchYahooChart(context.Background(), symbol, "interval=1wk&period1=0&period2=9999999999")
 	if err != nil {
 		return nil, "", err
 	}
@@ -246,12 +249,7 @@ func FetchMeta(symbol string) (model.StockMeta, error) {
 		return model.StockMeta{}, err
 	}
 
-	url := fmt.Sprintf(
-		"https://query1.finance.yahoo.com/v8/finance/chart/%s?interval=1m&range=1d",
-		symbol,
-	)
-
-	r, err := fetch(context.Background(), url)
+	r, err := fetchYahooChart(context.Background(), symbol, "interval=1m&range=1d")
 	if err != nil {
 		return model.StockMeta{}, err
 	}

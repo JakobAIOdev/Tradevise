@@ -566,6 +566,14 @@ export class StocksService {
     await this.redisService.subscribe(channel, onMessage);
     await this.redisService.incrementActiveSubscriber(symbol);
     await this.redisService.markSymbolActive(symbol);
+
+    const latest = await this.redisService.getJson<LivePriceEvent>(
+      `stocklatest:${symbol}`,
+    );
+    if (latest?.price && latest.price > 0) {
+      onMessage(JSON.stringify(latest));
+    }
+
     await this.redisService.requestImmediateLivePrice(symbol);
   }
 

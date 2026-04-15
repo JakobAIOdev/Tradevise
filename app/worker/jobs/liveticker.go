@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"log"
+	"sync"
 	"time"
 
 	goredis "github.com/redis/go-redis/v9"
@@ -48,17 +49,30 @@ func RunLiveTicker(rdb *goredis.Client, sym *store.SymbolStore) {
 func runLiveTickerFetchNow(rdb *goredis.Client) {
 	sub := rdb.Subscribe(context.Background(), "stocklive:fetchnow")
 	ch := sub.Channel()
+	var inFlight sync.Map
+	limiter := make(chan struct{}, 2)
 
 	for msg := range ch {
 		symbol := msg.Payload
 		if symbol == "" {
 			continue
 		}
-
-		log.Printf("[LiveTicker] immediate fetch requested for %s", symbol)
-		if err := publishLivePrice(rdb, symbol); err != nil {
-			log.Printf("[LiveTicker] immediate fetch failed for %s: %s", symbol, err)
+		if _, loaded := inFlight.LoadOrStore(symbol, struct{}{}); loaded {
+			continue
 		}
+
+		go func(symbol string) {
+			defer inFlight.Delete(symbol)
+			limiter <- struct{}{}
+			defer func() {
+				<-limiter
+			}()
+
+			log.Printf("[LiveTicker] immediate fetch requested for %s", symbol)
+			if err := publishLivePrice(rdb, symbol); err != nil {
+				log.Printf("[LiveTicker] immediate fetch failed for %s: %s", symbol, err)
+			}
+		}(symbol)
 	}
 }
 

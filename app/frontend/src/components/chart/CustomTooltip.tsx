@@ -6,7 +6,7 @@ type CustomTooltipProps = TooltipContentProps & {
   range: ChartRange
 }
 
-export function CustomTooltip({ active, payload, label, range }: CustomTooltipProps) {
+export function CustomTooltip({ active, payload, range }: CustomTooltipProps) {
   if (!active || !payload || payload.length === 0) return null
 
   const item = payload[0]
@@ -15,7 +15,7 @@ export function CustomTooltip({ active, payload, label, range }: CustomTooltipPr
   return (
     <div className="bg-surface px-3 py-2 border border-border rounded-xl">
       <p>{formatPrice(value)}</p>
-      <p className="text-muted">{formatDate(label as number, range)}</p>
+      <p className="text-muted">{formatDate(item.payload.time, range)}</p>
     </div>
   )
 }

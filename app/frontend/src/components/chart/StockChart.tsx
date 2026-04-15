@@ -23,6 +23,14 @@ const StockChart = ({ ticker, initialRange = '1D' }: StockChartProps) => {
   const { data, isPending } = useStockChart(ticker, range)
   const intradayAxis = getIntradayAxisConfig()
 
+  const shouldCompressClosedHours = range === '1W' || range === '1M'
+
+  const chartPoints =
+    data?.points.map((point, index) => ({
+      ...point,
+      x: shouldCompressClosedHours ? index : point.time,
+    })) ?? []
+
   if (isPending) return <p>LOADING</p>
 
   return (
@@ -35,7 +43,7 @@ const StockChart = ({ ticker, initialRange = '1D' }: StockChartProps) => {
         ))}
       </div>
       <ResponsiveContainer width="100%" height="100%" className="pb-25">
-        <LineChart data={data?.points}>
+        <LineChart data={chartPoints}>
           <CartesianGrid
             vertical={false}
             className="stroke-sparkline opacity-30"
@@ -44,8 +52,8 @@ const StockChart = ({ ticker, initialRange = '1D' }: StockChartProps) => {
 
           <XAxis
             type="number"
-            dataKey="time"
-            scale="time"
+            dataKey="x"
+            scale={range === '1D' ? 'time' : 'linear'}
             domain={range === '1D' ? intradayAxis.domain : ['dataMin', 'dataMax']}
             ticks={range === '1D' ? intradayAxis.ticks : undefined}
             axisLine={false}
@@ -57,7 +65,10 @@ const StockChart = ({ ticker, initialRange = '1D' }: StockChartProps) => {
               fontWeight: 400,
             }}
             dy={16}
-            tickFormatter={(value) => formatDate(value, range)}
+            tickFormatter={(value) => {
+              const point = chartPoints[Math.round(value)]
+              return formatDate(point?.time ?? value, range)
+            }}
           />
 
           <YAxis

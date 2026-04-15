@@ -1,6 +1,6 @@
 import { ExternalLink, Star } from 'lucide-react'
 import BackLink from '../components/BackLink'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import DetailHeader from '../components/detail/DetailHeader'
 import KeyStatistics from '../components/detail/KeyStatistics'
@@ -9,6 +9,7 @@ import StockChart from '../components/chart/StockChart'
 import { useLocation, useParams } from 'react-router-dom'
 import { useTradeStock } from '../hooks/useTradeStock'
 import { useStockLivePrice } from '../hooks/useStockLivePrice'
+import { useStockStatistics } from '../hooks/useStockStatistics'
 import type { Stock } from '../Types'
 
 type StockDetailLocationState = {
@@ -27,6 +28,7 @@ export default function StockDetailPage() {
 
   const buyStock = useTradeStock('buy')
   const sellStock = useTradeStock('sell')
+  const { data: statistics, isFetching: statisticsFetching } = useStockStatistics(ticker)
 
   const parsedQuantity = Number(quantity)
   const tradePending = buyStock.isPending || sellStock.isPending
@@ -49,6 +51,15 @@ export default function StockDetailPage() {
     enabled: false,
     staleTime: Infinity,
   })
+
+  useEffect(() => {
+    const previousTitle = document.title
+    document.title = `Tradevise | ${stock.ticker}`
+
+    return () => {
+      document.title = previousTitle
+    }
+  }, [stock.name, stock.ticker])
 
   function handleTrade(type: 'buy' | 'sell') {
     setTradeError(null)
@@ -97,7 +108,10 @@ export default function StockDetailPage() {
           <StockChart ticker={ticker} />
         </div>
         <div className="flex flex-col">
-          <KeyStatistics />
+          <KeyStatistics
+            statistics={statistics}
+            isLoading={statisticsFetching || statistics?.status === 'BOOTSTRAPPING'}
+          />
           <div className="flex w-full gap-3 pt-4">
             <ActionButton label="Buy" disabled={tradePending} action={() => handleTrade('buy')} />
             <ActionButton label="Sell" disabled={tradePending} action={() => handleTrade('sell')} />

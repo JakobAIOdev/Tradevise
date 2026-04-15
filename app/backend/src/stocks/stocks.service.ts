@@ -81,6 +81,19 @@ type StockStatisticsResponse = {
   updatedAt: Date | null;
 };
 
+type CachedStockMeta = {
+  symbol?: string;
+  name?: string;
+  currency?: string;
+  exchange?: string;
+  previousClose?: number;
+  dayHigh?: number;
+  dayLow?: number;
+  fiftyTwoWeekHigh?: number;
+  fiftyTwoWeekLow?: number;
+  volume?: number;
+};
+
 type ChartRow = {
   time: bigint | number | string;
   price: number;
@@ -395,12 +408,21 @@ export class StocksService {
 
   async getStatistics(symbol: string): Promise<StockStatisticsResponse> {
     const normalizedSymbol = this.parseXetraSymbol(symbol);
+    const cachedMeta = await this.getCachedStockMeta(normalizedSymbol);
+    if (cachedMeta) return cachedMeta;
+
     const meta = await this.prisma.stockMeta.findUnique({
       where: { symbol: normalizedSymbol },
     });
 
     if (!meta) {
       await this.redisService.requestImmediateStockMeta(normalizedSymbol);
+
+      for (let attempt = 0; attempt < 8; attempt += 1) {
+        await this.wait(250);
+        const refreshedMeta = await this.getCachedStockMeta(normalizedSymbol);
+        if (refreshedMeta) return refreshedMeta;
+      }
 
       return {
         symbol: normalizedSymbol,
@@ -432,6 +454,41 @@ export class StocksService {
       volume: meta.volume,
       updatedAt: meta.updatedAt,
     };
+  }
+
+  private async getCachedStockMeta(
+    symbol: string,
+  ): Promise<StockStatisticsResponse | null> {
+    const meta = await this.redisService.getJson<CachedStockMeta>(
+      `stockmeta:${symbol}`,
+    );
+
+    if (!meta) return null;
+
+    return {
+      symbol,
+      status: 'READY',
+      name: meta.name ?? null,
+      currency: meta.currency ?? null,
+      exchange: meta.exchange ?? null,
+      previousClose: this.positiveNumberOrNull(meta.previousClose),
+      dayHigh: this.positiveNumberOrNull(meta.dayHigh),
+      dayLow: this.positiveNumberOrNull(meta.dayLow),
+      fiftyTwoWeekHigh: this.positiveNumberOrNull(meta.fiftyTwoWeekHigh),
+      fiftyTwoWeekLow: this.positiveNumberOrNull(meta.fiftyTwoWeekLow),
+      volume: typeof meta.volume === 'number' ? meta.volume : null,
+      updatedAt: null,
+    };
+  }
+
+  private positiveNumberOrNull(value: unknown) {
+    return typeof value === 'number' && Number.isFinite(value) && value > 0
+      ? value
+      : null;
+  }
+
+  private wait(ms: number) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
   private async ensureBootstrapStartedIfNeeded(

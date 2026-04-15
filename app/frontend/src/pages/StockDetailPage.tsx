@@ -1,35 +1,54 @@
 import { ExternalLink, Star } from 'lucide-react'
 import BackLink from '../components/BackLink'
 import { useState } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import DetailHeader from '../components/detail/DetailHeader'
 import KeyStatistics from '../components/detail/KeyStatistics'
 import ActionButton from '../components/detail/ActionButton'
 import StockChart from '../components/chart/StockChart'
-import { useParams } from 'react-router-dom'
+import { useLocation, useParams } from 'react-router-dom'
 import { useTradeStock } from '../hooks/useTradeStock'
+import { useStockLivePrice } from '../hooks/useStockLivePrice'
+import type { Stock } from '../Types'
 
-const stock = {
-  name: 'Apple Inc.',
-  ticker: 'AAPL',
-  change: 1.23,
-  logo: 'https://s.yimg.com/lb/brands/150x150_apple.png',
-  price: 222.22,
-  changeValue: 2.35,
-  positiveChange: true,
+type StockDetailLocationState = {
+  stock?: Stock
 }
 
 export default function StockDetailPage() {
   const { ticker = '' } = useParams()
+  const location = useLocation()
+  const queryClient = useQueryClient()
   const [isFavorite, setIsFavorite] = useState(false)
   const [quantity, setQuantity] = useState('1')
   const [tradeError, setTradeError] = useState<string | null>(null)
   const [tradeSuccess, setTradeSuccess] = useState<string | null>(null)
+  useStockLivePrice(ticker)
 
   const buyStock = useTradeStock('buy')
   const sellStock = useTradeStock('sell')
 
   const parsedQuantity = Number(quantity)
   const tradePending = buyStock.isPending || sellStock.isPending
+  const stateStock = (location.state as StockDetailLocationState | null)?.stock
+  const discoverStock = queryClient
+    .getQueryData<Stock[]>(['discover-stocks'])
+    ?.find((stock) => stock.ticker === ticker)
+  const fallbackStock: Stock = {
+    name: ticker,
+    ticker,
+    change: 0,
+    logo: '',
+    positiveChange: true,
+  }
+  const initialStock = stateStock ?? discoverStock ?? fallbackStock
+
+  const { data: stock = initialStock } = useQuery({
+    queryKey: ['stock-detail', ticker],
+    initialData: () => queryClient.getQueryData<Stock>(['stock-detail', ticker]) ?? initialStock,
+    enabled: false,
+    staleTime: Infinity,
+  })
 
   function handleTrade(type: 'buy' | 'sell') {
     setTradeError(null)
@@ -98,10 +117,7 @@ export default function StockDetailPage() {
             <ExternalLink size={20} strokeWidth={1.5} className="text-muted" />
           </div>
           <p className="text-muted text-small">
-            Apple Inc. designs, manufactures, and markets smartphones, personal computers, tablets,
-            wearables, and accessories worldwide. The company offers iPhone, a line of smartphones;
-            Mac, a line of personal computers; iPad, a line of multi-purpose tablets; and wearables,
-            home, and accessories comprising
+            {stock.name} {stock.ticker}.
           </p>
         </div>
       </div>

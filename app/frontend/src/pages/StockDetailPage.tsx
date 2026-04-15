@@ -21,7 +21,6 @@ export default function StockDetailPage() {
   const location = useLocation()
   const queryClient = useQueryClient()
   const [isFavorite, setIsFavorite] = useState(false)
-  const [quantity, setQuantity] = useState('1')
   const [tradeError, setTradeError] = useState<string | null>(null)
   const [tradeSuccess, setTradeSuccess] = useState<string | null>(null)
   useStockLivePrice(ticker)
@@ -30,7 +29,7 @@ export default function StockDetailPage() {
   const sellStock = useTradeStock('sell')
   const { data: statistics, isFetching: statisticsFetching } = useStockStatistics(ticker)
 
-  const parsedQuantity = Number(quantity)
+  const parsedQuantity = Number(1)
   const tradePending = buyStock.isPending || sellStock.isPending
   const stateStock = (location.state as StockDetailLocationState | null)?.stock
   const discoverStock = queryClient

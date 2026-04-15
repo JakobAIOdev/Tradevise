@@ -11,6 +11,7 @@ import { useState } from 'react'
 import { CustomTooltip } from './CustomTooltip'
 import { formatDate, formatPrice, getIntradayAxisConfig } from '../../utils/chart-helper'
 import { useStockChart, type ChartRange } from '../../hooks/useStockChart'
+import ChartFilter from './ChartFilter'
 
 interface StockChartProps {
   ticker: string
@@ -76,10 +77,12 @@ const StockChart = ({ ticker, initialRange = '1D' }: StockChartProps) => {
   return (
     <div className="p-25 w-full h-full bg-surface border border-border rounded-xl">
       <div className="flex gap-8">
-        {['1D', '1W', '1M', '1Y', 'ALL'].map((r) => (
-          <button key={r} onClick={() => setRange(r as ChartRange)}>
-            {r}
-          </button>
+        {(['1D', '1W', '1M', '1Y', 'ALL'] as ChartRange[]).map((r) => (
+          <ChartFilter
+            label={r}
+            isActive={range === r}
+            setActive={(newRange) => setRange(newRange)}
+          />
         ))}
       </div>
       <ResponsiveContainer width="100%" height="100%" className="pb-25">

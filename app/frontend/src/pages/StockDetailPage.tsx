@@ -5,6 +5,8 @@ import DetailHeader from '../components/detail/DetailHeader'
 import KeyStatistics from '../components/detail/KeyStatistics'
 import ActionButton from '../components/detail/ActionButton'
 import StockChart from '../components/chart/StockChart'
+import { useParams } from 'react-router-dom'
+import { useTradeStock } from '../hooks/useTradeStock'
 
 const stock = {
   name: 'Apple Inc.',
@@ -17,7 +19,48 @@ const stock = {
 }
 
 export default function StockDetailPage() {
+  const { ticker = '' } = useParams()
   const [isFavorite, setIsFavorite] = useState(false)
+  const [quantity, setQuantity] = useState('1')
+  const [tradeError, setTradeError] = useState<string | null>(null)
+  const [tradeSuccess, setTradeSuccess] = useState<string | null>(null)
+
+  const buyStock = useTradeStock('buy')
+  const sellStock = useTradeStock('sell')
+
+  const parsedQuantity = Number(quantity)
+  const tradePending = buyStock.isPending || sellStock.isPending
+
+  function handleTrade(type: 'buy' | 'sell') {
+    setTradeError(null)
+    setTradeSuccess(null)
+
+    if (!ticker) {
+      setTradeError('No stock selected')
+      return
+    }
+
+    if (!Number.isFinite(parsedQuantity) || parsedQuantity <= 0) {
+      setTradeError('Quantity must be greater that 0')
+      return
+    }
+
+    const mutation = type === 'buy' ? buyStock : sellStock
+    mutation.mutate(
+      {
+        symbol: ticker,
+        quantity: parsedQuantity,
+      },
+      {
+        onSuccess: () => {
+          setTradeSuccess(type === 'buy' ? 'Bought successfully' : 'Sold successfully')
+        },
+        onError: (error) => {
+          setTradeError(error instanceof Error ? error.message : 'Transaction failed')
+        },
+      },
+    )
+  }
 
   return (
     <div className="max-w-300">
@@ -32,14 +75,17 @@ export default function StockDetailPage() {
       <DetailHeader {...stock} />
       <div className="grid grid-cols-[minmax(0,1fr)_19.6875rem] gap-6 mt-6">
         <div className="flex-1 h-111.5 bg-red-400 rounded-xl">
-          <StockChart ticker="APC.DE" />
+          <StockChart ticker={ticker} />
         </div>
         <div className="flex flex-col">
           <KeyStatistics />
           <div className="flex w-full gap-3 pt-4">
-            <ActionButton label="Buy" action={() => console.log('buy')} />
-            <ActionButton label="Sell" action={() => console.log('sell')} />
+            <ActionButton label="Buy" disabled={tradePending} action={() => handleTrade('buy')} />
+            <ActionButton label="Sell" disabled={tradePending} action={() => handleTrade('sell')} />
           </div>
+          {tradePending && <p className="text-small text-muted">Processing trade...</p>}
+          {tradeError && <p className="text-small text-bearish">{tradeError}</p>}
+          {tradeSuccess && <p className="text-small text-bullish">{tradeSuccess}</p>}
         </div>
       </div>
       <div className="grid grid-cols-2 gap-6 mt-6">

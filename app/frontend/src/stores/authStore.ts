@@ -18,14 +18,17 @@ type AuthState = {
   accessToken: string | null
   user: AuthUser | null
   isAuthenticated: boolean
+  isAuthInitialized: boolean
   setSession: (token: string) => void
   clearSession: () => void
+  setAuthInitialized: (value: boolean) => void
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
   accessToken: null,
   user: null,
   isAuthenticated: false,
+  isAuthInitialized: false,
   setSession: (token) => {
     const payload = jwtDecode<JwtPayload>(token)
 
@@ -44,5 +47,9 @@ export const useAuthStore = create<AuthState>((set) => ({
       accessToken: null,
       user: null,
       isAuthenticated: false,
+    }),
+  setAuthInitialized: (value) =>
+    set({
+      isAuthInitialized: value,
     }),
 }))

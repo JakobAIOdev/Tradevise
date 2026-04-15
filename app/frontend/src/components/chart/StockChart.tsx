@@ -26,6 +26,13 @@ const AXIS_TICK_STYLE = {
   fontSize: 13,
   fontWeight: 400,
 } as const
+const X_AXIS_TICK_COUNT_BY_RANGE: Record<ChartRange, number> = {
+  '1D': 5,
+  '1W': 4,
+  '1M': 4,
+  '1Y': 4,
+  ALL: 4,
+}
 
 function getPriceAxisConfig(points: { price: number }[]) {
   const baseline = points[0]?.price ?? 0
@@ -56,6 +63,26 @@ function getPriceAxisConfig(points: { price: number }[]) {
   }
 }
 
+function getXAxisTicks(
+  points: { x: number }[],
+  range: ChartRange,
+  intradayTicks: readonly number[],
+) {
+  if (range === '1D') return intradayTicks
+
+  if (points.length === 0) return []
+  if (points.length === 1) return [points[0].x]
+
+  const tickCount = Math.min(X_AXIS_TICK_COUNT_BY_RANGE[range], points.length)
+  const lastIndex = points.length - 1
+
+  const sampledIndices = Array.from({ length: tickCount }, (_, tickIndex) =>
+    Math.round((tickIndex * lastIndex) / Math.max(tickCount - 1, 1)),
+  )
+
+  return Array.from(new Set(sampledIndices)).map((index) => points[index].x)
+}
+
 const StockChart = ({ ticker, initialRange = '1D' }: StockChartProps) => {
   const [range, setRange] = useState<ChartRange>(initialRange)
   const { data } = useStockChart(ticker, range)
@@ -68,6 +95,7 @@ const StockChart = ({ ticker, initialRange = '1D' }: StockChartProps) => {
       }))
 
   const intradayAxis = getIntradayAxisConfig()
+  const xAxisTicks = getXAxisTicks(points, range, intradayAxis.ticks)
   const priceAxis = getPriceAxisConfig(points)
   const gridTicks = priceAxis.ticks.filter((tick) => tick !== priceAxis.baseline)
 
@@ -92,7 +120,7 @@ const StockChart = ({ ticker, initialRange = '1D' }: StockChartProps) => {
             dataKey="x"
             scale={range === '1D' ? 'time' : 'linear'}
             domain={range === '1D' ? intradayAxis.domain : ['dataMin', 'dataMax']}
-            ticks={range === '1D' ? intradayAxis.domain : undefined}
+            ticks={xAxisTicks}
             axisLine={false}
             tickLine={false}
             minTickGap={24}
@@ -142,7 +170,7 @@ const StockChart = ({ ticker, initialRange = '1D' }: StockChartProps) => {
             dot={false}
           />
           <Tooltip
-            content={(props) => <CustomTooltip {...props} range={range} />}
+            content={(props) => <CustomTooltip {...props} source={data?.source ?? 'intraday'} />}
             animationDuration={50}
           />
         </LineChart>

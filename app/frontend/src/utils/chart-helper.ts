@@ -22,6 +22,12 @@ export const formatDate = (timestamp: number, range: ChartRange) => {
       hour: '2-digit',
       minute: '2-digit',
     }).format(date)
+  else if (range === '1Y' || range === 'ALL')
+    return new Intl.DateTimeFormat('de-AT', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+    }).format(date)
   else
     return new Intl.DateTimeFormat('de-AT', {
       day: 'numeric',

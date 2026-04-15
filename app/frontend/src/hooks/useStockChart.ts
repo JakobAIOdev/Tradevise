@@ -8,11 +8,13 @@ export type GraphPoint = {
   price: number
 }
 
+export type ChartHistorySource = 'intraday' | 'weekly'
+
 export type ChartHistoryResponse = {
   symbol: string
   range: ChartRange
   status: 'READY' | 'BOOTSTRAPPING'
-  source: 'intraday' | 'weekly'
+  source: ChartHistorySource
   points: GraphPoint[]
 }
 

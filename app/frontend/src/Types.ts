@@ -20,3 +20,18 @@ export interface Statistic {
   value: number | string
   suffix?: string
 }
+
+export type StockStatistics = {
+  symbol: string
+  status: 'READY' | 'BOOTSTRAPPING'
+  name: string | null
+  currency: string | null
+  exchange: string | null
+  previousClose: number | null
+  dayHigh: number | null
+  dayLow: number | null
+  fiftyTwoWeekHigh: number | null
+  fiftyTwoWeekLow: number | null
+  volume: number | null
+  updatedAt: string | null
+}

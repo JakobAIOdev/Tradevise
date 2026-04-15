@@ -57,8 +57,19 @@ export function SearchBar({ className = '', size = 'default' }: SearchBarProps) 
   }, [])
 
   const handleSelect = useCallback(
-    (symbol: string) => {
-      navigate(`/detail/${encodeURIComponent(symbol)}`)
+    (result: StockSuggestion) => {
+      const symbol = result.symbol
+      navigate(`/detail/${encodeURIComponent(symbol)}`, {
+        state: {
+          stock: {
+            name: result.name || symbol,
+            ticker: symbol,
+            change: 0,
+            logo: result.logoUrl ?? '',
+            positiveChange: true,
+          },
+        },
+      })
       setInput('')
       setIsOpen(false)
       setActiveIndex(-1)
@@ -75,7 +86,7 @@ export function SearchBar({ className = '', size = 'default' }: SearchBarProps) 
       e.preventDefault()
       setActiveIndex((i) => Math.max(i - 1, -1))
     } else if (e.key === 'Enter' && activeIndex >= 0) {
-      handleSelect(results[activeIndex].symbol)
+      handleSelect(results[activeIndex])
     } else if (e.key === 'Escape') {
       setIsOpen(false)
     }
@@ -163,7 +174,7 @@ export function SearchBar({ className = '', size = 'default' }: SearchBarProps) 
                 onMouseEnter={() => setActiveIndex(i)}
                 onMouseDown={(e) => {
                   e.preventDefault()
-                  handleSelect(r.symbol)
+                  handleSelect(r)
                 }}
                 className={`flex min-h-48 cursor-pointer items-center gap-10 rounded-lg px-10 py-8 transition-colors duration-100
                   ${i === activeIndex ? 'bg-surface-hover' : 'hover:bg-surface-hover'}

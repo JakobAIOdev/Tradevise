@@ -11,7 +11,6 @@ import DashboardLayout from './layouts/DashboardLayout'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AuthError } from './lib/api'
 import { useAuthBootstrap } from './hooks/useAuthBootstrap'
-import DevLoginPage from './pages/DevLoginPage'
 import ModalRoot from './components/modal/ModalRoot'
 
 const queryClient = new QueryClient({
@@ -36,7 +35,6 @@ function App() {
             <Routes>
               <Route element={<PublicLayout />}>
                 <Route path="/" element={<LandingPage />} />
-                <Route path="/login" element={<DevLoginPage />} />
               </Route>
 
               <Route element={<DashboardLayout />}>

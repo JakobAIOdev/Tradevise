@@ -20,18 +20,17 @@ interface StockChartProps {
 const StockChart = ({ ticker, initialRange = '1D' }: StockChartProps) => {
   const [range, setRange] = useState<ChartRange>(initialRange)
 
-  const { data, isPending } = useStockChart(ticker, range)
+  const { data } = useStockChart(ticker, range)
   const intradayAxis = getIntradayAxisConfig()
 
   const shouldCompressClosedHours = range === '1W' || range === '1M'
+  const chartKey = `${ticker}-${range}`
 
   const chartPoints =
     data?.points.map((point, index) => ({
       ...point,
       x: shouldCompressClosedHours ? index : point.time,
     })) ?? []
-
-  if (isPending) return <p>LOADING</p>
 
   return (
     <div className="p-25 w-full h-full bg-surface border border-border rounded-xl">
@@ -43,7 +42,7 @@ const StockChart = ({ ticker, initialRange = '1D' }: StockChartProps) => {
         ))}
       </div>
       <ResponsiveContainer width="100%" height="100%" className="pb-25">
-        <LineChart data={chartPoints}>
+        <LineChart key={chartKey} data={chartPoints}>
           <CartesianGrid
             vertical={false}
             className="stroke-sparkline opacity-30"
@@ -105,7 +104,6 @@ const StockChart = ({ ticker, initialRange = '1D' }: StockChartProps) => {
             stroke="var(--color-bullish)"
             strokeWidth={3}
             dot={false}
-            activeDot={false}
           />
           <Tooltip
             content={(props) => <CustomTooltip {...props} range={range} />}

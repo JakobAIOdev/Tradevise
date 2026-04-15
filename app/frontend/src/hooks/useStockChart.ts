@@ -35,6 +35,5 @@ export function useStockChart(ticker: string, range: ChartRange) {
     queryFn: () => fetchStockChart(ticker, range),
     enabled: ticker.trim().length > 0,
     staleTime: 1000 * 30,
-    placeholderData: (prev) => prev,
   })
 }

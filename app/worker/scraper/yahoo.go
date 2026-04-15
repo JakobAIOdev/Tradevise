@@ -258,7 +258,7 @@ func FetchMeta(symbol string) (model.StockMeta, error) {
 
 	m := r.Chart.Result[0].Meta
 
-	return model.StockMeta{
+	meta := model.StockMeta{
 		Symbol:           m.Symbol,
 		Name:             m.LongName,
 		Currency:         m.Currency,
@@ -269,5 +269,6 @@ func FetchMeta(symbol string) (model.StockMeta, error) {
 		FiftyTwoWeekHigh: m.FiftyTwoWeekHigh,
 		FiftyTwoWeekLow:  m.FiftyTwoWeekLow,
 		Volume:           m.RegularMarketVolume,
-	}, nil
+	}
+	return meta, nil
 }

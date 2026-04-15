@@ -70,6 +70,9 @@ const StockChart = ({ ticker, initialRange = '1D' }: StockChartProps) => {
   const priceAxis = getPriceAxisConfig(points)
   const gridTicks = priceAxis.ticks.filter((tick) => tick !== priceAxis.baseline)
 
+  const baseline = points[0]?.price
+  const lastPrice = points.at(-1)?.price
+
   return (
     <div className="p-25 w-full h-full bg-surface border border-border rounded-xl">
       <div className="flex gap-8">
@@ -127,7 +130,11 @@ const StockChart = ({ ticker, initialRange = '1D' }: StockChartProps) => {
           <Line
             type="monotone"
             dataKey="price"
-            stroke="var(--color-bullish)"
+            stroke={
+              baseline == null || lastPrice == null || lastPrice >= baseline
+                ? 'var(--color-bullish)'
+                : 'var(--color-bearish)'
+            }
             strokeWidth={3}
             dot={false}
           />

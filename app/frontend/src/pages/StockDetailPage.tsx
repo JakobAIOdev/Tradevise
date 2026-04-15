@@ -1,23 +1,99 @@
 import { ExternalLink, Star } from 'lucide-react'
 import BackLink from '../components/BackLink'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import DetailHeader from '../components/detail/DetailHeader'
 import KeyStatistics from '../components/detail/KeyStatistics'
 import ActionButton from '../components/detail/ActionButton'
+import PositionSummary from '../components/detail/PositionSummary'
 import StockChart from '../components/chart/StockChart'
+import { useLocation, useParams } from 'react-router-dom'
+import { useTradeStock } from '../hooks/useTradeStock'
+import { useStockLivePrice } from '../hooks/useStockLivePrice'
+import { useStockStatistics } from '../hooks/useStockStatistics'
+import { usePortfolio } from '../hooks/usePortfolio'
+import type { Stock } from '../Types'
 
-const stock = {
-  name: 'Apple Inc.',
-  ticker: 'AAPL',
-  change: 1.23,
-  logo: 'https://s.yimg.com/lb/brands/150x150_apple.png',
-  price: 222.22,
-  changeValue: 2.35,
-  positiveChange: true,
+type StockDetailLocationState = {
+  stock?: Stock
 }
 
 export default function StockDetailPage() {
+  const { ticker = '' } = useParams()
+  const location = useLocation()
+  const queryClient = useQueryClient()
   const [isFavorite, setIsFavorite] = useState(false)
+  const [tradeError, setTradeError] = useState<string | null>(null)
+  const [tradeSuccess, setTradeSuccess] = useState<string | null>(null)
+  useStockLivePrice(ticker)
+
+  const buyStock = useTradeStock('buy')
+  const sellStock = useTradeStock('sell')
+  const { data: statistics, isFetching: statisticsFetching } = useStockStatistics(ticker)
+  const { data: portfolio, isFetching: portfolioFetching } = usePortfolio()
+
+  const parsedQuantity = Number(1)
+  const tradePending = buyStock.isPending || sellStock.isPending
+  const holding = portfolio?.holdings.find((item) => item.symbol === ticker)
+  const stateStock = (location.state as StockDetailLocationState | null)?.stock
+  const discoverStock = queryClient
+    .getQueryData<Stock[]>(['discover-stocks'])
+    ?.find((stock) => stock.ticker === ticker)
+  const fallbackStock: Stock = {
+    name: ticker,
+    ticker,
+    change: 0,
+    logo: '',
+    positiveChange: true,
+  }
+  const initialStock = stateStock ?? discoverStock ?? fallbackStock
+
+  const { data: stock = initialStock } = useQuery({
+    queryKey: ['stock-detail', ticker],
+    initialData: () => queryClient.getQueryData<Stock>(['stock-detail', ticker]) ?? initialStock,
+    enabled: false,
+    staleTime: Infinity,
+  })
+
+  useEffect(() => {
+    const previousTitle = document.title
+    document.title = `Tradevise | ${stock.ticker}`
+
+    return () => {
+      document.title = previousTitle
+    }
+  }, [stock.name, stock.ticker])
+
+  function handleTrade(type: 'buy' | 'sell') {
+    setTradeError(null)
+    setTradeSuccess(null)
+
+    if (!ticker) {
+      setTradeError('No stock selected')
+      return
+    }
+
+    if (!Number.isFinite(parsedQuantity) || parsedQuantity <= 0) {
+      setTradeError('Quantity must be greater that 0')
+      return
+    }
+
+    const mutation = type === 'buy' ? buyStock : sellStock
+    mutation.mutate(
+      {
+        symbol: ticker,
+        quantity: parsedQuantity,
+      },
+      {
+        onSuccess: () => {
+          setTradeSuccess(type === 'buy' ? 'Bought successfully' : 'Sold successfully')
+        },
+        onError: (error) => {
+          setTradeError(error instanceof Error ? error.message : 'Transaction failed')
+        },
+      },
+    )
+  }
 
   return (
     <div className="max-w-300">
@@ -32,30 +108,31 @@ export default function StockDetailPage() {
       <DetailHeader {...stock} />
       <div className="grid grid-cols-[minmax(0,1fr)_19.6875rem] gap-6 mt-6">
         <div className="flex-1 h-111.5 bg-red-400 rounded-xl">
-          <StockChart ticker="APC.DE" />
+          <StockChart ticker={ticker} />
         </div>
         <div className="flex flex-col">
-          <KeyStatistics />
+          <KeyStatistics
+            statistics={statistics}
+            isLoading={statisticsFetching || statistics?.status === 'BOOTSTRAPPING'}
+          />
           <div className="flex w-full gap-3 pt-4">
-            <ActionButton label="Buy" action={() => console.log('buy')} />
-            <ActionButton label="Sell" action={() => console.log('sell')} />
+            <ActionButton label="Buy" disabled={tradePending} action={() => handleTrade('buy')} />
+            <ActionButton label="Sell" disabled={tradePending} action={() => handleTrade('sell')} />
           </div>
+          {tradePending && <p className="text-small text-muted">Processing trade...</p>}
+          {tradeError && <p className="text-small text-bearish">{tradeError}</p>}
+          {tradeSuccess && <p className="text-small text-bullish">{tradeSuccess}</p>}
         </div>
       </div>
       <div className="grid grid-cols-2 gap-6 mt-6">
-        <div className="bg-surface h-40.5 border border-border rounded-xl px-25 pt-5">
-          <p className="text-text text-body">Your Position</p>
-        </div>
-        <div className="bg-surface h-40.5 border border-border rounded-xl px-25 pt-5">
+        <PositionSummary holding={holding} isLoading={portfolioFetching && !portfolio} />
+        <div className="bg-surface h-45 border border-border rounded-xl px-25 pt-5">
           <div className="flex justify-between">
             <p className="text-text text-body">About {stock.name}</p>
             <ExternalLink size={20} strokeWidth={1.5} className="text-muted" />
           </div>
           <p className="text-muted text-small">
-            Apple Inc. designs, manufactures, and markets smartphones, personal computers, tablets,
-            wearables, and accessories worldwide. The company offers iPhone, a line of smartphones;
-            Mac, a line of personal computers; iPad, a line of multi-purpose tablets; and wearables,
-            home, and accessories comprising
+            {stock.name} {stock.ticker}.
           </p>
         </div>
       </div>

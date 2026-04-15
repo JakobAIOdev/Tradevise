@@ -80,7 +80,31 @@ func bootstrap(rdb *goredis.Client, pool *pgxpool.Pool, sym *store.SymbolStore, 
 	}
 	log.Printf("[Bootstrap] %s weekly done (%d points)", symbol, len(weeklyPoints))
 
-	if err := db.SetSymbolDone(pool, symbol, currency, symbol); err != nil {
+	log.Printf("[Bootstrap] fetching meta for %s", symbol)
+	meta, err := scraper.FetchMeta(symbol)
+	if err != nil {
+		return err
+	}
+	if err := db.UpsertStockMeta(pool, meta); err != nil {
+		return err
+	}
+	metaPayload, err := json.Marshal(meta)
+	if err != nil {
+		return err
+	}
+	if err := rdb.Set(context.Background(), "stockmeta:"+symbol, metaPayload, 24*time.Hour).Err(); err != nil {
+		return err
+	}
+
+	name := meta.Name
+	if name == "" {
+		name = symbol
+	}
+	if currency == "" {
+		currency = meta.Currency
+	}
+
+	if err := db.SetSymbolDone(pool, symbol, currency, name); err != nil {
 		return err
 	}
 

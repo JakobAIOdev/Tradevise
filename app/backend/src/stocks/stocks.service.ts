@@ -66,6 +66,34 @@ type ChartHistoryResponse = {
   points: GraphPoint[];
 };
 
+type StockStatisticsResponse = {
+  symbol: string;
+  status: 'READY' | 'BOOTSTRAPPING';
+  name: string | null;
+  currency: string | null;
+  exchange: string | null;
+  previousClose: number | null;
+  dayHigh: number | null;
+  dayLow: number | null;
+  fiftyTwoWeekHigh: number | null;
+  fiftyTwoWeekLow: number | null;
+  volume: number | null;
+  updatedAt: Date | null;
+};
+
+type CachedStockMeta = {
+  symbol?: string;
+  name?: string;
+  currency?: string;
+  exchange?: string;
+  previousClose?: number;
+  dayHigh?: number;
+  dayLow?: number;
+  fiftyTwoWeekHigh?: number;
+  fiftyTwoWeekLow?: number;
+  volume?: number;
+};
+
 type ChartRow = {
   time: bigint | number | string;
   price: number;
@@ -376,6 +404,79 @@ export class StocksService {
       source: 'weekly',
       points: rows.map((row) => this.mapChartRow(row)),
     };
+  }
+
+  async getStatistics(symbol: string): Promise<StockStatisticsResponse> {
+    const normalizedSymbol = this.parseXetraSymbol(symbol);
+    const cachedMeta = await this.getCachedStockMeta(normalizedSymbol);
+    if (cachedMeta) return cachedMeta;
+
+    const meta = await this.prisma.stockMeta.findUnique({
+      where: { symbol: normalizedSymbol },
+    });
+    if (!meta) {
+      await this.redisService.requestImmediateStockMeta(normalizedSymbol);
+      return {
+        symbol: normalizedSymbol,
+        status: 'BOOTSTRAPPING',
+        name: null,
+        currency: null,
+        exchange: null,
+        previousClose: null,
+        dayHigh: null,
+        dayLow: null,
+        fiftyTwoWeekHigh: null,
+        fiftyTwoWeekLow: null,
+        volume: null,
+        updatedAt: null,
+      };
+    }
+
+    return {
+      symbol: normalizedSymbol,
+      status: 'READY',
+      name: meta.name,
+      currency: meta.currency,
+      exchange: meta.exchange,
+      previousClose: meta.previousClose?.toNumber() ?? null,
+      dayHigh: meta.dayHigh?.toNumber() ?? null,
+      dayLow: meta.dayLow?.toNumber() ?? null,
+      fiftyTwoWeekHigh: meta.fiftyTwoWeekHigh?.toNumber() ?? null,
+      fiftyTwoWeekLow: meta.fiftyTwoWeekLow?.toNumber() ?? null,
+      volume: meta.volume,
+      updatedAt: meta.updatedAt,
+    };
+  }
+
+  private async getCachedStockMeta(
+    symbol: string,
+  ): Promise<StockStatisticsResponse | null> {
+    const meta = await this.redisService.getJson<CachedStockMeta>(
+      `stockmeta:${symbol}`,
+    );
+
+    if (!meta) return null;
+
+    return {
+      symbol,
+      status: 'READY',
+      name: meta.name ?? null,
+      currency: meta.currency ?? null,
+      exchange: meta.exchange ?? null,
+      previousClose: this.positiveNumberOrNull(meta.previousClose),
+      dayHigh: this.positiveNumberOrNull(meta.dayHigh),
+      dayLow: this.positiveNumberOrNull(meta.dayLow),
+      fiftyTwoWeekHigh: this.positiveNumberOrNull(meta.fiftyTwoWeekHigh),
+      fiftyTwoWeekLow: this.positiveNumberOrNull(meta.fiftyTwoWeekLow),
+      volume: typeof meta.volume === 'number' ? meta.volume : null,
+      updatedAt: null,
+    };
+  }
+
+  private positiveNumberOrNull(value: unknown) {
+    return typeof value === 'number' && Number.isFinite(value) && value > 0
+      ? value
+      : null;
   }
 
   private async ensureBootstrapStartedIfNeeded(

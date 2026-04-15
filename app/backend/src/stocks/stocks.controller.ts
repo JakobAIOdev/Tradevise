@@ -27,6 +27,11 @@ export class StocksController {
     return this.stocksService.getChartHistory(ticker, range);
   }
 
+  @Get(':ticker/statistics')
+  statistics(@Param('ticker') ticker: string) {
+    return this.stocksService.getStatistics(ticker);
+  }
+
   @Sse(':ticker/live')
   live(@Param('ticker') ticker: string) {
     return this.stocksService.streamLivePrice(ticker);

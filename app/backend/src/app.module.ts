@@ -5,6 +5,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { PrismaModule } from './prisma/prisma.module.js';
 import { StocksModule } from './stocks/stocks.module.js';
 import { RedisModule } from './redis/redis.module.js';
+import { PortfolioModule } from './portfolio/portfolio.module.js';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { RedisModule } from './redis/redis.module.js';
     PrismaModule,
     RedisModule,
     StocksModule,
+    PortfolioModule,
   ],
 })
 export class AppModule {}

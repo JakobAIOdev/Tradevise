@@ -57,6 +57,10 @@ export class RedisService implements OnModuleDestroy {
     await this.client.publish('stocklive:fetchnow', symbol);
   }
 
+  async requestImmediateStockMeta(symbol: string) {
+    await this.client.publish('stockmeta:fetchnow', symbol);
+  }
+
   async getJson<T>(key: string) {
     const value = await this.client.get(key);
     if (!value) return null;

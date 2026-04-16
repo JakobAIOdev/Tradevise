@@ -6,6 +6,7 @@ import DiscoverPage from './pages/DiscoverPage'
 import StockDetailPage from './pages/StockDetailPage'
 import RankedPage from './pages/RankedPage'
 import GroupPage from './pages/GroupPage'
+import AuthPage from './pages/AuthPage'
 import PublicLayout from './layouts/PublicLayout'
 import DashboardLayout from './layouts/DashboardLayout'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -35,6 +36,7 @@ function App() {
             <Routes>
               <Route element={<PublicLayout />}>
                 <Route path="/" element={<LandingPage />} />
+                <Route path="/login" element={<AuthPage />} />
               </Route>
 
               <Route element={<DashboardLayout />}>

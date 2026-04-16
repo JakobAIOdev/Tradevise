@@ -1,36 +1,32 @@
 import StatisticContainer from './StatisticContainer'
 import { LoaderCircle } from 'lucide-react'
 import type { Statistic, StockStatistics } from '../../Types'
+import { formatMoney } from '../../utils/format'
 
 type KeyStatisticsProps = {
   statistics?: StockStatistics
   isLoading?: boolean
 }
 
-function formatPrice(value: number | null | undefined) {
+function formatStatisticMoney(value: number | null | undefined, currency: string | null | undefined) {
   if (typeof value !== 'number') return '-'
-  return value.toFixed(2)
+  return formatMoney(value, currency ?? 'EUR')
 }
 
-function formatVolume(value: number | null | undefined) {
-  if (typeof value !== 'number') return '-'
-
-  return new Intl.NumberFormat('en-US', {
-    notation: 'compact',
-    maximumFractionDigits: 2,
-  }).format(value)
+function formatTextValue(value: string | null | undefined) {
+  return value?.trim() || '-'
 }
 
 function buildStatistics(statistics?: StockStatistics): Statistic[] {
+  const currency = statistics?.currency
+
   return [
-    { label: 'Previous Close', value: formatPrice(statistics?.previousClose), suffix: '€' },
-    { label: 'Day High', value: formatPrice(statistics?.dayHigh), suffix: '€' },
-    { label: 'Day Low', value: formatPrice(statistics?.dayLow), suffix: '€' },
-    { label: '52W High', value: formatPrice(statistics?.fiftyTwoWeekHigh), suffix: '€' },
-    { label: '52W Low', value: formatPrice(statistics?.fiftyTwoWeekLow), suffix: '€' },
-    { label: 'Volume', value: formatVolume(statistics?.volume) },
-    { label: 'Exchange', value: statistics?.exchange ?? '-' },
-    { label: 'Currency', value: statistics?.currency ?? '-' },
+    { label: 'Previous Close', value: formatStatisticMoney(statistics?.previousClose, currency) },
+    { label: 'Day High', value: formatStatisticMoney(statistics?.dayHigh, currency) },
+    { label: 'Day Low', value: formatStatisticMoney(statistics?.dayLow, currency) },
+    { label: '52W High', value: formatStatisticMoney(statistics?.fiftyTwoWeekHigh, currency) },
+    { label: '52W Low', value: formatStatisticMoney(statistics?.fiftyTwoWeekLow, currency) },
+    { label: 'Exchange', value: formatTextValue(statistics?.exchange) },
   ]
 }
 
@@ -38,7 +34,7 @@ export default function KeyStatistics({ statistics, isLoading = false }: KeyStat
   const stats = buildStatistics(statistics)
 
   return (
-    <div className="w-full bg-surface border border-border rounded-xl px-5 pt-5 pb-9">
+    <div className="flex h-95 w-full flex-col rounded-xl border border-border bg-surface px-5 pt-5 pb-6">
       <div className="mb-4 flex items-center justify-between">
         <p className="text-text text-body font-bold">Key Statistics</p>
         {isLoading && (
@@ -49,9 +45,9 @@ export default function KeyStatistics({ statistics, isLoading = false }: KeyStat
           />
         )}
       </div>
-      <ul className="flex flex-col">
+      <ul className="grid flex-1 grid-cols-2 content-between gap-x-5 gap-y-3">
         {stats.map((stat) => (
-          <StatisticContainer key={stat.label} {...stat} />
+          <StatisticContainer key={stat.label} {...stat} fullWidth={stat.label === 'Exchange'} />
         ))}
       </ul>
     </div>

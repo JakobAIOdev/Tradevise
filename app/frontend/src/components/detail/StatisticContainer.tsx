@@ -1,10 +1,23 @@
 import type { Statistic } from '../../Types'
 
-export default function StatisticContainer({ label, value, suffix }: Statistic) {
+type StatisticContainerProps = Statistic & {
+  fullWidth?: boolean
+}
+
+export default function StatisticContainer({
+  label,
+  value,
+  suffix,
+  fullWidth = false,
+}: StatisticContainerProps) {
   return (
-    <li className="flex justify-between items-center py-1 ">
-      <span className="text-muted text-small">{label}</span>
-      <span className="text-text text-body tabular-nums">
+    <li
+      className={`flex min-h-15 flex-col justify-between gap-1 border-b border-border/60 pb-2 last:border-b-0 ${
+        fullWidth ? 'col-span-2' : ''
+      }`}
+    >
+      <span className="text-muted text-small leading-tight">{label}</span>
+      <span className="text-text text-body tabular-nums leading-tight">
         {value}
         {suffix ? ` ${suffix}` : ''}
       </span>

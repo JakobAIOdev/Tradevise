@@ -9,6 +9,7 @@ type LiveStockEvent = {
   price?: number
   change?: number
   changePercent?: number
+  bootstrapDone?: boolean
 }
 
 export function useStockLivePrice(ticker: string) {
@@ -25,6 +26,11 @@ export function useStockLivePrice(ticker: string) {
 
     events.onmessage = (event) => {
       const payload = JSON.parse(event.data) as LiveStockEvent
+
+      if (payload.bootstrapDone) {
+        void queryClient.invalidateQueries({ queryKey: ['stock-chart', ticker] })
+        void queryClient.invalidateQueries({ queryKey: ['stock-statistics', ticker] })
+      }
 
       queryClient.setQueryData<Stock>(['stock-detail', ticker], (stock) => {
         if (!stock || stock.ticker !== payload.symbol) return stock

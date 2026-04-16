@@ -52,7 +52,7 @@ export default function StockDetailPage() {
 
   useEffect(() => {
     const previousTitle = document.title
-    document.title = `Tradevise | ${stock.ticker}`
+    document.title = `Tradevise | ${stock.name}`
 
     return () => {
       document.title = previousTitle

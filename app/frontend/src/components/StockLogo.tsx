@@ -9,7 +9,7 @@ interface StockLogoProps {
 export default function StockLogo({ src, ticker, size = 48 }: StockLogoProps) {
   const [error, setError] = useState(false)
 
-  if (error) {
+  if (error || !src) {
     return (
       <div
         style={{ width: size, height: size }}

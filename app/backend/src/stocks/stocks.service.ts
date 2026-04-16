@@ -9,17 +9,13 @@ import { Observable, type Subscriber } from 'rxjs';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { RedisService } from '../redis/redis.service.js';
 
-type YahooSearchResponse = {
-  quotes?: YahooQuote[];
-};
-
-type YahooQuote = {
-  quoteType?: string;
-  symbol?: string;
-  shortname?: string;
-  longname?: string;
-  logoUrl?: string;
-  exchange?: string;
+type LangSchwarzSearchResult = {
+  id?: number;
+  instrumentId?: number;
+  displayname?: string;
+  isin?: string;
+  categorySymbol?: string;
+  categoryName?: string;
 };
 
 export type StockSuggestion = {
@@ -114,46 +110,40 @@ type LiveSubscription = {
   onMessage: (message: string) => void;
 };
 
-const MIN_SYMBOL_LENGTH_WITH_SUFFIX = 4;
-const SUPPORTED_EURO_SYMBOL_SUFFIX_RANK = new Map([
-  ['.DE', 0], // Xetra
-  ['.F', 1], // Frankfurt
-  ['.VI', 2], // Vienna
-]);
-const SUPPORTED_EURO_SYMBOL_SUFFIXES = new Set(
-  SUPPORTED_EURO_SYMBOL_SUFFIX_RANK.keys(),
-);
+const LANG_SCHWARZ_SEARCH_URL =
+  'https://www.ls-x.de/_rpc/json/.lstc/instrument/search/main';
+const ISIN_PATTERN = /^[A-Z]{2}[A-Z0-9]{9}[0-9]$/;
 
 const DISCOVER_STOCKS: DiscoverStockDefinition[] = [
   {
     name: 'Apple Inc.',
-    ticker: 'APC.DE',
-    logo: 'https://s.yimg.com/lb/brands/150x150_apple.png',
+    ticker: 'US0378331005',
+    logo: buildFallbackLogoUrl('US0378331005'),
   },
   {
     name: 'Tesla',
-    ticker: 'TL0.DE',
-    logo: 'https://s.yimg.com/lb/brands/150x150_tesla.png',
+    ticker: 'US88160R1014',
+    logo: buildFallbackLogoUrl('US88160R1014'),
   },
   {
     name: 'Microsoft',
-    ticker: 'MSF.DE',
-    logo: 'https://s.yimg.com/lb/brands/150x150_microsoft.png',
+    ticker: 'US5949181045',
+    logo: buildFallbackLogoUrl('US5949181045'),
   },
   {
     name: 'Amazon',
-    ticker: 'AMZ.DE',
-    logo: 'https://s.yimg.com/lb/brands/150x150_amazon.png',
+    ticker: 'US0231351067',
+    logo: buildFallbackLogoUrl('US0231351067'),
   },
   {
     name: 'NVIDIA',
-    ticker: 'NVD.DE',
-    logo: 'https://s.yimg.com/lb/brands/150x150_nvidia.png',
+    ticker: 'US67066G1040',
+    logo: buildFallbackLogoUrl('US67066G1040'),
   },
   {
     name: 'Alphabet',
-    ticker: 'ABEA.DE',
-    logo: 'https://s.yimg.com/lb/brands/150x150_google.png',
+    ticker: 'US02079K3059',
+    logo: buildFallbackLogoUrl('US02079K3059'),
   },
 ];
 
@@ -163,64 +153,27 @@ function normalizeSymbol(symbol: string): string {
   return symbol.trim().toUpperCase();
 }
 
-function getSymbolSuffix(symbol: string): string | null {
-  const suffixStart = symbol.lastIndexOf('.');
-  if (suffixStart === -1 || suffixStart === symbol.length - 1) return null;
-
-  return symbol.slice(suffixStart);
-}
-
-function getSymbolBase(symbol: string): string {
-  const suffixStart = symbol.lastIndexOf('.');
-  if (suffixStart === -1) return symbol;
-
-  return symbol.slice(0, suffixStart);
-}
-
-function hasValidYahooSymbolChars(symbol: string): boolean {
-  return (
-    symbol.length >= MIN_SYMBOL_LENGTH_WITH_SUFFIX && /^[A-Z0-9.\-]+$/.test(symbol)
-  );
-}
-
-function isSupportedEuroSymbol(symbol: string): boolean {
+function isSupportedLangSchwarzSymbol(symbol: string): boolean {
   const normalizedSymbol = normalizeSymbol(symbol);
-  const suffix = getSymbolSuffix(normalizedSymbol);
 
-  return (
-    hasValidYahooSymbolChars(normalizedSymbol) &&
-    suffix !== null &&
-    SUPPORTED_EURO_SYMBOL_SUFFIXES.has(suffix)
-  );
+  return ISIN_PATTERN.test(normalizedSymbol);
 }
 
-function toSupportedEuroSymbol(quote: YahooQuote): string | null {
-  if (typeof quote.symbol !== 'string' || quote.quoteType !== 'EQUITY') {
-    return null;
+function getInstrumentType(
+  result: LangSchwarzSearchResult,
+): StockSuggestion['type'] | null {
+  switch (result.categorySymbol?.toUpperCase()) {
+    case 'STK':
+      return 'STOCK';
+    case 'ETF':
+      return 'ETF';
+    default:
+      return null;
   }
-
-  const symbol = normalizeSymbol(quote.symbol);
-  if (isSupportedEuroSymbol(symbol)) {
-    return symbol;
-  }
-
-  return null;
 }
 
-function getQuoteName(quote: YahooQuote): string {
-  return quote.shortname || quote.longname || '';
-}
-
-function getSuggestionDedupeKey(quote: YahooQuote, symbol: string): string {
-  const normalizedName = getQuoteName(quote)
-    .toUpperCase()
-    .replace(/[^A-Z0-9]/g, '');
-
-  return normalizedName || getSymbolBase(symbol);
-}
-
-function buildFallbackLogoUrl(symbol: string): string {
-  return `https://api.elbstream.com/logos/symbol/${encodeURIComponent(symbol)}`;
+function buildFallbackLogoUrl(isin: string): string {
+  return `https://api.elbstream.com/logos/isin/${encodeURIComponent(isin)}`;
 }
 
 @Injectable()
@@ -234,20 +187,18 @@ export class StocksService {
     const trimmedQuery = query.trim();
     if (!trimmedQuery) return [];
 
-    const url = new URL('https://query1.finance.yahoo.com/v1/finance/search');
+    const url = new URL(LANG_SCHWARZ_SEARCH_URL);
     url.search = new URLSearchParams({
       q: trimmedQuery,
-      quotesCount: '25',
-      newsCount: '0',
-      enableLogoUrl: 'true',
-      lang: 'de-DE',
-      region: 'DE',
+      localeId: '2',
     }).toString();
 
     const response = await fetch(url, {
       headers: {
         Accept: 'application/json',
-        'User-Agent': 'tradevise/1.0',
+        Referer: 'https://www.ls-x.de/',
+        'User-Agent':
+          'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0) AppleWebKit/537.36 Chrome/119.0.0.0 Safari/537.36',
       },
     });
 
@@ -255,31 +206,27 @@ export class StocksService {
       throw new BadGatewayException('Stock search provider failed');
     }
 
-    const data = (await response.json()) as YahooSearchResponse;
-    const quotes = data.quotes ?? [];
-
+    const results = (await response.json()) as LangSchwarzSearchResult[];
     const suggestions = new Map<string, StockSuggestionCandidate>();
 
-    for (const quote of quotes) {
-      const supportedSymbol = toSupportedEuroSymbol(quote);
-      if (!supportedSymbol) continue;
+    for (const result of Array.isArray(results) ? results : []) {
+      if (typeof result.isin !== 'string') continue;
 
-      const suffix = getSymbolSuffix(supportedSymbol);
-      const rank = suffix
-        ? (SUPPORTED_EURO_SYMBOL_SUFFIX_RANK.get(suffix) ?? Number.MAX_SAFE_INTEGER)
-        : Number.MAX_SAFE_INTEGER;
-      const dedupeKey = getSuggestionDedupeKey(quote, supportedSymbol);
-      const existing = suggestions.get(dedupeKey);
+      const symbol = normalizeSymbol(result.isin);
+      if (!isSupportedLangSchwarzSymbol(symbol)) continue;
 
-      if (existing && existing.rank <= rank) continue;
+      const type = getInstrumentType(result);
+      if (!type) continue;
 
-      suggestions.set(dedupeKey, {
-        rank,
+      if (suggestions.has(symbol)) continue;
+
+      suggestions.set(symbol, {
+        rank: suggestions.size,
         suggestion: {
-          symbol: supportedSymbol,
-          name: getQuoteName(quote),
-          type: 'STOCK',
-          logoUrl: quote.logoUrl ?? buildFallbackLogoUrl(supportedSymbol),
+          symbol,
+          name: result.displayname ?? symbol,
+          type,
+          logoUrl: buildFallbackLogoUrl(symbol),
         },
       });
     }
@@ -302,7 +249,7 @@ export class StocksService {
   }
 
   streamLivePrice(symbol: string): Observable<MessageEvent> {
-    const normalizedSymbol = this.parseSupportedEuroSymbol(symbol);
+    const normalizedSymbol = this.parseSupportedLangSchwarzSymbol(symbol);
 
     return new Observable<MessageEvent>((subscriber) => {
       const channel = `stocklive:${normalizedSymbol}`;
@@ -328,7 +275,8 @@ export class StocksService {
   }
 
   streamLivePrices(symbols: string[]): Observable<MessageEvent> {
-    const normalizedSymbols = this.parseUniqueSupportedEuroSymbols(symbols);
+    const normalizedSymbols =
+      this.parseUniqueSupportedLangSchwarzSymbols(symbols);
 
     if (normalizedSymbols.length === 0) {
       throw new BadRequestException('At least one valid symbol is required');
@@ -367,7 +315,7 @@ export class StocksService {
     symbol: string,
     rangeInput: string,
   ): Promise<ChartHistoryResponse> {
-    const normalizedSymbol = this.parseSupportedEuroSymbol(symbol);
+    const normalizedSymbol = this.parseSupportedLangSchwarzSymbol(symbol);
 
     const range = this.parseChartRange(rangeInput);
     const status = await this.ensureBootstrapStartedIfNeeded(normalizedSymbol);
@@ -375,7 +323,7 @@ export class StocksService {
     if (range === '1D' || range === '1W' || range === '1M') {
       const timeFilterSql =
         range === '1D'
-          ? this.getCurrentXetraDayFilterSql(normalizedSymbol)
+          ? this.getCurrentLangSchwarzDayFilterSql(normalizedSymbol)
           : this.getRollingIntradayFilterSql(normalizedSymbol, range);
       const rows = await this.prisma.$queryRaw<ChartRow[]>(Prisma.sql`
         SELECT
@@ -419,7 +367,7 @@ export class StocksService {
   }
 
   async getStatistics(symbol: string): Promise<StockStatisticsResponse> {
-    const normalizedSymbol = this.parseSupportedEuroSymbol(symbol);
+    const normalizedSymbol = this.parseSupportedLangSchwarzSymbol(symbol);
     const cachedMeta = await this.getCachedStockMeta(normalizedSymbol);
     if (cachedMeta) return cachedMeta;
 
@@ -455,7 +403,7 @@ export class StocksService {
       dayLow: meta.dayLow?.toNumber() ?? null,
       fiftyTwoWeekHigh: meta.fiftyTwoWeekHigh?.toNumber() ?? null,
       fiftyTwoWeekLow: meta.fiftyTwoWeekLow?.toNumber() ?? null,
-      volume: meta.volume,
+      volume: meta.volume && meta.volume > 0 ? meta.volume : null,
       updatedAt: meta.updatedAt,
     };
   }
@@ -480,7 +428,8 @@ export class StocksService {
       dayLow: this.positiveNumberOrNull(meta.dayLow),
       fiftyTwoWeekHigh: this.positiveNumberOrNull(meta.fiftyTwoWeekHigh),
       fiftyTwoWeekLow: this.positiveNumberOrNull(meta.fiftyTwoWeekLow),
-      volume: typeof meta.volume === 'number' ? meta.volume : null,
+      volume:
+        typeof meta.volume === 'number' && meta.volume > 0 ? meta.volume : null,
       updatedAt: null,
     };
   }
@@ -513,27 +462,27 @@ export class StocksService {
     return 'BOOTSTRAPPING';
   }
 
-  private parseSupportedEuroSymbol(symbol: string): string {
+  private parseSupportedLangSchwarzSymbol(symbol: string): string {
     const normalizedSymbol = normalizeSymbol(symbol);
     if (!normalizedSymbol) {
       throw new BadRequestException('Symbol is required');
     }
-    if (!isSupportedEuroSymbol(normalizedSymbol)) {
+    if (!isSupportedLangSchwarzSymbol(normalizedSymbol)) {
       throw new BadRequestException(
-        'Only supported German or Austrian EUR stock symbols are supported',
+        'Only Lang & Schwarz EUR instruments identified by ISIN are supported',
       );
     }
 
     return normalizedSymbol;
   }
 
-  private parseUniqueSupportedEuroSymbols(symbols: string[]): string[] {
+  private parseUniqueSupportedLangSchwarzSymbols(symbols: string[]): string[] {
     return [
       ...new Set(
         symbols
           .map((symbol) => symbol.trim())
           .filter((symbol) => symbol.length > 0)
-          .map((symbol) => this.parseSupportedEuroSymbol(symbol)),
+          .map((symbol) => this.parseSupportedLangSchwarzSymbol(symbol)),
       ),
     ];
   }
@@ -619,7 +568,7 @@ export class StocksService {
     `;
   }
 
-  private getCurrentXetraDayFilterSql(symbol: string) {
+  private getCurrentLangSchwarzDayFilterSql(symbol: string) {
     return Prisma.sql`
       WHERE symbol = ${symbol}
         AND time >= (

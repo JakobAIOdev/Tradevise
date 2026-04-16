@@ -1,10 +1,22 @@
-import { Outlet } from 'react-router-dom'
+import { Outlet, useNavigate } from 'react-router-dom'
 import Sidebar from '../components/Sidebar'
 import Topbar from '../components/Topbar'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useAuthStore } from '../stores/authStore'
 
 export default function DashboardLayout() {
   const [collapsed, setCollapsed] = useState(false)
+
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
+  const navigate = useNavigate()
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      navigate('/login')
+    }
+  }, [isAuthenticated, navigate])
+
+  if (!isAuthenticated) return <></>
 
   return (
     <div className="flex h-screen bg-bg overflow-hidden transition-colors duration-200 ease-out">

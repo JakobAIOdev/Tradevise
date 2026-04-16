@@ -1,11 +1,11 @@
-export function formatMoney(value: number) {
-  const amount = new Intl.NumberFormat('de-DE', {
+export function formatMoney(value: number, currency = 'EUR') {
+  return new Intl.NumberFormat('de-DE', {
+    style: 'currency',
+    currency,
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
     useGrouping: true,
   }).format(value)
-
-  return `${amount} €`
 }
 
 export function formatSignedMoney(value: number) {

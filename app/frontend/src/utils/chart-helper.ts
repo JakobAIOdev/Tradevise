@@ -1,16 +1,17 @@
 import type { ChartRange } from '../hooks/useStockChart'
 
-export function getIntradayAxisConfig(now = new Date()) {
-  const year = now.getFullYear()
-  const month = now.getMonth()
-  const day = now.getDate()
+export function getIntradayAxisConfig(anchorTimestamp?: number) {
+  const anchorDate = anchorTimestamp ? new Date(anchorTimestamp * 1000) : new Date()
+  const year = anchorDate.getUTCFullYear()
+  const month = anchorDate.getUTCMonth()
+  const day = anchorDate.getUTCDate()
 
   const atTime = (hour: number, minute = 0) =>
-    new Date(year, month, day, hour, minute).getTime() / 1000
+    Date.UTC(year, month, day, hour, minute) / 1000
 
   return {
-    domain: [atTime(9), atTime(17, 30)] as const,
-    ticks: [atTime(9), atTime(11), atTime(13), atTime(15), atTime(17)],
+    domain: [atTime(7), atTime(23)] as const,
+    ticks: [atTime(7), atTime(11), atTime(15), atTime(19), atTime(23)],
   }
 }
 
@@ -21,6 +22,7 @@ export const formatDate = (timestamp: number, range: ChartRange) => {
     return new Intl.DateTimeFormat('de-AT', {
       hour: '2-digit',
       minute: '2-digit',
+      timeZone: 'UTC',
     }).format(date)
   else if (range === '1Y' || range === 'ALL')
     return new Intl.DateTimeFormat('de-AT', {

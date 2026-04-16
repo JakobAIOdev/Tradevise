@@ -7,15 +7,16 @@ import {
   Tooltip,
   ReferenceLine,
 } from 'recharts'
-import { useState } from 'react'
 import { CustomTooltip } from './CustomTooltip'
 import { formatDate, formatPrice, getIntradayAxisConfig } from '../../utils/chart-helper'
-import { useStockChart, type ChartRange } from '../../hooks/useStockChart'
+import { type ChartHistoryResponse, type ChartRange } from '../../hooks/useStockChart'
 import ChartFilter from './ChartFilter'
 
 interface StockChartProps {
   ticker: string
-  initialRange?: ChartRange
+  range: ChartRange
+  onRangeChange: (range: ChartRange) => void
+  data?: ChartHistoryResponse
 }
 
 const MIN_GRID_STEPS_PER_SIDE = 2
@@ -101,10 +102,7 @@ function getPriceAxisWidth(ticks: number[]) {
   return longestLabelLength * 10
 }
 
-const StockChart = ({ ticker, initialRange = 'intraday' }: StockChartProps) => {
-  const [range, setRange] = useState<ChartRange>(initialRange)
-  const { data } = useStockChart(ticker, range)
-
+const StockChart = ({ ticker, range, onRangeChange, data }: StockChartProps) => {
   const points = !data?.points
     ? []
     : data.points.map((point, index) => ({
@@ -129,7 +127,7 @@ const StockChart = ({ ticker, initialRange = 'intraday' }: StockChartProps) => {
             key={option.value}
             label={option.label}
             isActive={range === option.value}
-            setActive={(newRange) => setRange(newRange)}
+            setActive={onRangeChange}
             value={option.value}
           />
         ))}

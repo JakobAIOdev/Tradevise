@@ -36,6 +36,7 @@ export function useStockChart(ticker: string, range: ChartRange) {
     queryKey: ['stock-chart', ticker, range],
     queryFn: () => fetchStockChart(ticker, range),
     enabled: ticker.trim().length > 0,
+    refetchInterval: (query) => (query.state.data?.status === 'BOOTSTRAPPING' ? 2000 : false),
     staleTime: 1000 * 30,
   })
 }

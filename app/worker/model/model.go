@@ -8,29 +8,25 @@ type PriceIntraday struct {
 	Price  float64
 }
 
-type PriceWeekly struct {
+type PriceDaily struct {
 	Symbol string
 	Date   time.Time
 	Price  float64
 }
 
-type TrackedSymbol struct {
-	Symbol          string
-	Name            string
-	Currency        string
-	BootstrapStatus string // PENDING | BOOTSTRAPPING | DONE | FAILED
-	BootstrappedAt  *time.Time
-}
-
 // Redis Payload
 type LivePriceEvent struct {
-	Symbol        string  `json:"symbol"`
-	Price         float64 `json:"price"`
-	Time          int64   `json:"time"`
-	PreviousClose float64 `json:"previousClose,omitempty"`
-	Change        float64 `json:"change,omitempty"`
-	ChangePercent float64 `json:"changePercent,omitempty"`
-	BootstrapDone bool    `json:"bootstrapDone,omitempty"`
+	Symbol           string      `json:"symbol"`
+	Price            float64     `json:"price"`
+	Time             int64       `json:"time"`
+	PreviousClose    float64     `json:"previousClose,omitempty"`
+	Change           float64     `json:"change,omitempty"`
+	ChangePercent    float64     `json:"changePercent,omitempty"`
+	DayHigh          float64     `json:"dayHigh,omitempty"`
+	DayLow           float64     `json:"dayLow,omitempty"`
+	FiftyTwoWeekHigh float64     `json:"fiftyTwoWeekHigh,omitempty"`
+	FiftyTwoWeekLow  float64     `json:"fiftyTwoWeekLow,omitempty"`
+	IntradayPoint    *PricePoint `json:"intradayPoint,omitempty"`
 }
 
 type StockMeta struct {
@@ -48,8 +44,8 @@ type StockMeta struct {
 
 // Scraper intern
 type PricePoint struct {
-	Time  int64
-	Price float64
+	Time  int64   `json:"time"`
+	Price float64 `json:"price"`
 }
 
 type FetchResult struct {

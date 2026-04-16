@@ -17,7 +17,6 @@ export function useStockStatistics(ticker: string) {
     queryKey: ['stock-statistics', ticker],
     queryFn: () => fetchStockStatistics(ticker),
     enabled: ticker.trim().length > 0,
-    refetchInterval: (query) => (query.state.data?.status === 'BOOTSTRAPPING' ? 2000 : false),
     staleTime: 1000 * 60 * 5,
   })
 }

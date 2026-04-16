@@ -45,6 +45,7 @@ export default function StockDetailPage() {
 
   const { data: stock = initialStock } = useQuery({
     queryKey: ['stock-detail', ticker],
+    queryFn: async () => queryClient.getQueryData<Stock>(['stock-detail', ticker]) ?? initialStock,
     initialData: () => queryClient.getQueryData<Stock>(['stock-detail', ticker]) ?? initialStock,
     enabled: false,
     staleTime: Infinity,
@@ -75,10 +76,7 @@ export default function StockDetailPage() {
           <StockChart ticker={ticker} />
         </div>
         <div className="flex flex-col">
-          <KeyStatistics
-            statistics={statistics}
-            isLoading={statisticsFetching || statistics?.status === 'BOOTSTRAPPING'}
-          />
+          <KeyStatistics statistics={statistics} isLoading={statisticsFetching} />
           <div className="flex w-full gap-3 pt-4">
             <ActionButton
               label="Buy"

@@ -6,8 +6,7 @@ export function getIntradayAxisConfig(anchorTimestamp?: number) {
   const month = anchorDate.getUTCMonth()
   const day = anchorDate.getUTCDate()
 
-  const atTime = (hour: number, minute = 0) =>
-    Date.UTC(year, month, day, hour, minute) / 1000
+  const atTime = (hour: number, minute = 0) => Date.UTC(year, month, day, hour, minute) / 1000
 
   return {
     domain: [atTime(7), atTime(23)] as const,
@@ -18,13 +17,13 @@ export function getIntradayAxisConfig(anchorTimestamp?: number) {
 export const formatDate = (timestamp: number, range: ChartRange) => {
   const date = new Date(timestamp * 1000)
 
-  if (range === '1D')
+  if (range === 'intraday')
     return new Intl.DateTimeFormat('de-AT', {
       hour: '2-digit',
       minute: '2-digit',
       timeZone: 'UTC',
     }).format(date)
-  else if (range === '1Y' || range === 'ALL')
+  else if (range === '1Y' || range === '3Y' || range === 'ALL')
     return new Intl.DateTimeFormat('de-AT', {
       day: 'numeric',
       month: 'short',

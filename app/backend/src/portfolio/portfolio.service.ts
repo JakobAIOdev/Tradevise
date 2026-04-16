@@ -83,7 +83,9 @@ export class PortfolioService {
       totalValue: cash + holdingsValue,
       todayChange,
       todayChangePercent,
-      holdings: enrichedHoldings.map(({ todayBaselineValue, ...holding }) => holding),
+      holdings: enrichedHoldings.map(
+        ({ todayBaselineValue, ...holding }) => holding,
+      ),
     };
   }
 
@@ -361,13 +363,13 @@ export class PortfolioService {
 
     if (intradayPrice) return this.toNumber(intradayPrice.price);
 
-    const weeklyPrice = await this.prisma.priceWeekly.findFirst({
+    const dailyPrice = await this.prisma.priceDaily.findFirst({
       where: { symbol },
       orderBy: { date: 'desc' },
       select: { price: true },
     });
 
-    if (weeklyPrice) return this.toNumber(weeklyPrice.price);
+    if (dailyPrice) return this.toNumber(dailyPrice.price);
 
     return this.getTradePrice(symbol);
   }

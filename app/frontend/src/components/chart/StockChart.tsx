@@ -94,7 +94,7 @@ const StockChart = ({ ticker, initialRange = '1D' }: StockChartProps) => {
         x: range === '1W' || range === '1M' ? index : point.time,
       }))
 
-  const intradayAxis = getIntradayAxisConfig()
+  const intradayAxis = getIntradayAxisConfig(points[0]?.time)
   const xAxisTicks = getXAxisTicks(points, range, intradayAxis.ticks)
   const priceAxis = getPriceAxisConfig(points)
   const gridTicks = priceAxis.ticks.filter((tick) => tick !== priceAxis.baseline)

@@ -19,6 +19,7 @@ export function CustomTooltip({ active, payload, source }: CustomTooltipProps) {
           month: 'short',
           hour: 'numeric',
           minute: '2-digit',
+          timeZone: 'UTC',
         }
       : {
           day: 'numeric',

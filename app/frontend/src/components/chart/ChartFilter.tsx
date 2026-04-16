@@ -1,14 +1,15 @@
 import type { ChartRange } from '../../hooks/useStockChart'
 
 interface ChartFilterProps {
-  label: ChartRange
+  label: string
+  value: ChartRange
   isActive: boolean
   setActive: (range: ChartRange) => void
 }
 
-const ChartFilter = ({ label, isActive, setActive }: ChartFilterProps) => {
+const ChartFilter = ({ label, value, isActive, setActive }: ChartFilterProps) => {
   const handleClick = () => {
-    setActive(label)
+    setActive(value)
   }
 
   return (

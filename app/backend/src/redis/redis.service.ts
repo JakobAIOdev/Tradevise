@@ -27,42 +27,12 @@ export class RedisService implements OnModuleDestroy {
     });
   }
 
-  async enqueueBootstrapOnce(symbol: string) {
-    const queuedKey = `bootstrapqueued:${symbol}`;
-    const processingKey = `bootstraplock:${symbol}`;
-    const queuedTtlSeconds = 10 * 60;
-
-    const result = await this.client.eval(
-      `
-      if redis.call("EXISTS", KEYS[1]) == 1 or redis.call("EXISTS", KEYS[2]) == 1 then
-        return 0
-      end
-
-      redis.call("SET", KEYS[1], "1", "EX", ARGV[1])
-      redis.call("LPUSH", KEYS[3], ARGV[2])
-      return 1
-      `,
-      3,
-      queuedKey,
-      processingKey,
-      'bootstrapqueue',
-      queuedTtlSeconds,
-      symbol,
-    );
-
-    return Number(result) === 1;
-  }
-
   async requestImmediateLivePrice(symbol: string) {
     const requestKey = `stocklive:requested:${symbol}`;
     const result = await this.client.set(requestKey, '1', 'EX', 20, 'NX');
     if (result === 'OK') {
       await this.client.publish('stocklive:fetchnow', symbol);
     }
-  }
-
-  async requestImmediateStockMeta(symbol: string) {
-    await this.client.publish('stockmeta:fetchnow', symbol);
   }
 
   async getJson<T>(key: string) {

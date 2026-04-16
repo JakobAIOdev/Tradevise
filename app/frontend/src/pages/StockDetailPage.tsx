@@ -10,6 +10,7 @@ import StockChart from '../components/chart/StockChart'
 import { useLocation, useParams } from 'react-router-dom'
 import { useStockLivePrice } from '../hooks/useStockLivePrice'
 import { useStockStatistics } from '../hooks/useStockStatistics'
+import { type ChartRange, useStockChart } from '../hooks/useStockChart'
 import { usePortfolio } from '../hooks/usePortfolio'
 import type { Stock } from '../Types'
 import { useModalStore } from '../stores/useModalStore'
@@ -18,16 +19,44 @@ type StockDetailLocationState = {
   stock?: Stock
 }
 
+function getRangePerformance(stock: Stock, prices: number[] | undefined): Stock {
+  const firstPrice = prices?.[0]
+  const lastPrice =
+    prices && prices.length > 0 ? prices[prices.length - 1] : undefined
+
+  if (
+    typeof firstPrice !== 'number' ||
+    typeof lastPrice !== 'number' ||
+    firstPrice <= 0 ||
+    lastPrice <= 0
+  ) {
+    return stock
+  }
+
+  const changeValue = lastPrice - firstPrice
+  const change = (changeValue / firstPrice) * 100
+
+  return {
+    ...stock,
+    price: lastPrice,
+    change,
+    changeValue,
+    positiveChange: changeValue >= 0,
+  }
+}
+
 export default function StockDetailPage() {
   const { ticker = '' } = useParams()
   const { open } = useModalStore()
   const location = useLocation()
   const queryClient = useQueryClient()
   const [isFavorite, setIsFavorite] = useState(false)
+  const [range, setRange] = useState<ChartRange>('intraday')
   useStockLivePrice(ticker)
 
   const { data: statistics, isFetching: statisticsFetching } = useStockStatistics(ticker)
   const { data: portfolio, isFetching: portfolioFetching } = usePortfolio()
+  const { data: chart } = useStockChart(ticker, range)
 
   const holding = portfolio?.holdings.find((item) => item.symbol === ticker)
   const stateStock = (location.state as StockDetailLocationState | null)?.stock
@@ -45,10 +74,16 @@ export default function StockDetailPage() {
 
   const { data: stock = initialStock } = useQuery({
     queryKey: ['stock-detail', ticker],
+    queryFn: async () => queryClient.getQueryData<Stock>(['stock-detail', ticker]) ?? initialStock,
     initialData: () => queryClient.getQueryData<Stock>(['stock-detail', ticker]) ?? initialStock,
     enabled: false,
     staleTime: Infinity,
   })
+
+  const displayStock = getRangePerformance(
+    stock,
+    chart?.points.map((point) => point.price),
+  )
 
   useEffect(() => {
     const previousTitle = document.title
@@ -69,16 +104,13 @@ export default function StockDetailPage() {
           onClick={() => setIsFavorite(!isFavorite)}
         />
       </div>
-      <DetailHeader {...stock} />
+      <DetailHeader {...displayStock} />
       <div className="grid grid-cols-[minmax(0,1fr)_19.6875rem] gap-6 mt-6">
         <div className="flex-1 h-111.5 bg-red-400 rounded-xl">
-          <StockChart ticker={ticker} />
+          <StockChart ticker={ticker} range={range} onRangeChange={setRange} data={chart} />
         </div>
         <div className="flex flex-col">
-          <KeyStatistics
-            statistics={statistics}
-            isLoading={statisticsFetching || statistics?.status === 'BOOTSTRAPPING'}
-          />
+          <KeyStatistics statistics={statistics} isLoading={statisticsFetching} />
           <div className="flex w-full gap-3 pt-4">
             <ActionButton
               label="Buy"

@@ -37,7 +37,11 @@ type LivePriceEvent = {
   previousClose?: number;
   change?: number;
   changePercent?: number;
-  bootstrapDone?: boolean;
+  dayHigh?: number;
+  dayLow?: number;
+  fiftyTwoWeekHigh?: number;
+  fiftyTwoWeekLow?: number;
+  intradayPoint?: GraphPoint;
 };
 
 type DiscoverStockDefinition = {
@@ -52,7 +56,7 @@ type DiscoverStock = DiscoverStockDefinition & {
   changeValue?: number;
 };
 
-type ChartRange = '1D' | '1W' | '1M' | '1Y' | 'ALL';
+type ChartRange = 'intraday' | '1M' | '6M' | '1Y' | '3Y' | 'ALL';
 
 type GraphPoint = {
   time: number;
@@ -62,14 +66,12 @@ type GraphPoint = {
 type ChartHistoryResponse = {
   symbol: string;
   range: ChartRange;
-  status: 'READY' | 'BOOTSTRAPPING';
-  source: 'intraday' | 'weekly';
+  source: 'intraday' | 'daily';
   points: GraphPoint[];
 };
 
 type StockStatisticsResponse = {
   symbol: string;
-  status: 'READY' | 'BOOTSTRAPPING';
   name: string | null;
   currency: string | null;
   exchange: string | null;
@@ -100,10 +102,6 @@ type ChartRow = {
   price: number;
 };
 
-type TrackedSymbolRow = {
-  bootstrap_status: string | null;
-};
-
 type LiveSubscription = {
   symbol: string;
   channel: string;
@@ -111,7 +109,7 @@ type LiveSubscription = {
 };
 
 const LANG_SCHWARZ_SEARCH_URL =
-  'https://www.ls-x.de/_rpc/json/.lstc/instrument/search/main';
+  'https://www.ls-tc.de/_rpc/json/.lstc/instrument/search/main';
 const ISIN_PATTERN = /^[A-Z]{2}[A-Z0-9]{9}[0-9]$/;
 
 const DISCOVER_STOCKS: DiscoverStockDefinition[] = [
@@ -147,7 +145,7 @@ const DISCOVER_STOCKS: DiscoverStockDefinition[] = [
   },
 ];
 
-const CHART_RANGES = ['1D', '1W', '1M', '1Y', 'ALL'] as const;
+const CHART_RANGES = ['intraday', '1M', '6M', '1Y', '3Y', 'ALL'] as const;
 
 function normalizeSymbol(symbol: string): string {
   return symbol.trim().toUpperCase();
@@ -196,7 +194,7 @@ export class StocksService {
     const response = await fetch(url, {
       headers: {
         Accept: 'application/json',
-        Referer: 'https://www.ls-x.de/',
+        Referer: 'https://www.ls-tc.de/',
         'User-Agent':
           'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0) AppleWebKit/537.36 Chrome/119.0.0.0 Safari/537.36',
       },
@@ -316,53 +314,43 @@ export class StocksService {
     rangeInput: string,
   ): Promise<ChartHistoryResponse> {
     const normalizedSymbol = this.parseSupportedLangSchwarzSymbol(symbol);
-
     const range = this.parseChartRange(rangeInput);
-    const status = await this.ensureBootstrapStartedIfNeeded(normalizedSymbol);
+    await this.redisService.requestImmediateLivePrice(normalizedSymbol);
 
-    if (range === '1D' || range === '1W' || range === '1M') {
-      const timeFilterSql =
-        range === '1D'
-          ? this.getCurrentLangSchwarzDayFilterSql(normalizedSymbol)
-          : this.getRollingIntradayFilterSql(normalizedSymbol, range);
+    if (range === 'intraday') {
       const rows = await this.prisma.$queryRaw<ChartRow[]>(Prisma.sql`
         SELECT
           EXTRACT(EPOCH FROM time)::bigint AS time,
           price::double precision AS price
         FROM prices_intraday
-        ${timeFilterSql}
+        ${this.getCurrentLangSchwarzDayFilterSql(normalizedSymbol)}
         ORDER BY time ASC
       `);
 
       return {
         symbol: normalizedSymbol,
         range,
-        status,
         source: 'intraday',
         points: rows.map((row) => this.mapChartRow(row)),
       };
     }
 
-    const whereClause =
-      range === '1Y'
-        ? Prisma.sql`WHERE symbol = ${normalizedSymbol} AND date >= CURRENT_DATE - INTERVAL '1 year'`
-        : Prisma.sql`WHERE symbol = ${normalizedSymbol}`;
-
     const rows = await this.prisma.$queryRaw<ChartRow[]>(Prisma.sql`
       SELECT
         EXTRACT(EPOCH FROM (date::timestamp AT TIME ZONE 'UTC'))::bigint AS time,
         price::double precision AS price
-      FROM prices_weekly
-      ${whereClause}
+      FROM prices_daily
+      ${this.getDailyRangeFilterSql(normalizedSymbol, range)}
       ORDER BY date ASC
     `);
+    const points = rows.map((row) => this.mapChartRow(row));
+    const latestPrice = await this.getCachedLivePrice(normalizedSymbol);
 
     return {
       symbol: normalizedSymbol,
       range,
-      status,
-      source: 'weekly',
-      points: rows.map((row) => this.mapChartRow(row)),
+      source: 'daily',
+      points: this.applyLatestPriceToLastPoint(points, latestPrice),
     };
   }
 
@@ -375,10 +363,9 @@ export class StocksService {
       where: { symbol: normalizedSymbol },
     });
     if (!meta) {
-      await this.redisService.requestImmediateStockMeta(normalizedSymbol);
+      await this.redisService.requestImmediateLivePrice(normalizedSymbol);
       return {
         symbol: normalizedSymbol,
-        status: 'BOOTSTRAPPING',
         name: null,
         currency: null,
         exchange: null,
@@ -394,7 +381,6 @@ export class StocksService {
 
     return {
       symbol: normalizedSymbol,
-      status: 'READY',
       name: meta.name,
       currency: meta.currency,
       exchange: meta.exchange,
@@ -419,7 +405,6 @@ export class StocksService {
 
     return {
       symbol,
-      status: 'READY',
       name: meta.name ?? null,
       currency: meta.currency ?? null,
       exchange: meta.exchange ?? null,
@@ -438,28 +423,6 @@ export class StocksService {
     return typeof value === 'number' && Number.isFinite(value) && value > 0
       ? value
       : null;
-  }
-
-  private async ensureBootstrapStartedIfNeeded(
-    symbol: string,
-  ): Promise<'READY' | 'BOOTSTRAPPING'> {
-    const trackedRows = await this.prisma.$queryRaw<
-      TrackedSymbolRow[]
-    >(Prisma.sql`
-      SELECT bootstrap_status
-      FROM tracked_symbols
-      WHERE symbol = ${symbol}
-      LIMIT 1
-    `);
-
-    const tracked = trackedRows[0];
-    if (tracked?.bootstrap_status === 'DONE') {
-      return 'READY';
-    }
-
-    await this.redisService.enqueueBootstrapOnce(symbol);
-
-    return 'BOOTSTRAPPING';
   }
 
   private parseSupportedLangSchwarzSymbol(symbol: string): string {
@@ -548,23 +511,33 @@ export class StocksService {
   }
 
   private parseChartRange(rangeInput: string): ChartRange {
-    const normalizedRange = rangeInput.trim().toUpperCase() || '1D';
+    const trimmedRange = rangeInput.trim();
+    const normalizedRange =
+      trimmedRange.length > 0 ? trimmedRange.toUpperCase() : 'INTRADAY';
 
-    if (CHART_RANGES.includes(normalizedRange as ChartRange)) {
-      return normalizedRange as ChartRange;
+    switch (normalizedRange) {
+      case 'INTRADAY':
+        return 'intraday';
+      case '1M':
+      case '6M':
+      case '1Y':
+      case '3Y':
+      case 'ALL':
+        return normalizedRange;
     }
 
     throw new BadRequestException(
-      'Invalid range. Allowed values: 1D, 1W, 1M, 1Y, ALL',
+      `Invalid range. Allowed values: ${CHART_RANGES.join(', ')}`,
     );
   }
 
-  private getRollingIntradayFilterSql(symbol: string, range: '1W' | '1M') {
-    const intervalSql = this.getIntradayIntervalSql(range);
-
+  private getDailyRangeFilterSql(
+    symbol: string,
+    range: Exclude<ChartRange, 'intraday'>,
+  ) {
     return Prisma.sql`
       WHERE symbol = ${symbol}
-        AND time >= NOW() - ${intervalSql}
+        ${this.getDailyRangeIntervalSql(range)}
     `;
   }
 
@@ -582,12 +555,18 @@ export class StocksService {
     `;
   }
 
-  private getIntradayIntervalSql(range: '1W' | '1M') {
+  private getDailyRangeIntervalSql(range: Exclude<ChartRange, 'intraday'>) {
     switch (range) {
-      case '1W':
-        return Prisma.sql`INTERVAL '7 days'`;
       case '1M':
-        return Prisma.sql`INTERVAL '30 days'`;
+        return Prisma.sql`AND date >= CURRENT_DATE - INTERVAL '1 month'`;
+      case '6M':
+        return Prisma.sql`AND date >= CURRENT_DATE - INTERVAL '6 months'`;
+      case '1Y':
+        return Prisma.sql`AND date >= CURRENT_DATE - INTERVAL '1 year'`;
+      case '3Y':
+        return Prisma.sql`AND date >= CURRENT_DATE - INTERVAL '3 years'`;
+      case 'ALL':
+        return Prisma.sql``;
     }
   }
 
@@ -596,5 +575,32 @@ export class StocksService {
       time: Number(row.time),
       price: Number(row.price),
     };
+  }
+
+  private async getCachedLivePrice(symbol: string) {
+    const latest = await this.redisService.getJson<LivePriceEvent>(
+      `stocklatest:${symbol}`,
+    );
+
+    return typeof latest?.price === 'number' && latest.price > 0
+      ? latest.price
+      : null;
+  }
+
+  private applyLatestPriceToLastPoint(
+    points: GraphPoint[],
+    latestPrice: number | null,
+  ) {
+    if (points.length === 0 || latestPrice == null || latestPrice <= 0) {
+      return points;
+    }
+
+    const nextPoints = [...points];
+    nextPoints[nextPoints.length - 1] = {
+      ...nextPoints[nextPoints.length - 1],
+      price: latestPrice,
+    };
+
+    return nextPoints;
   }
 }

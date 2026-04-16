@@ -1,19 +1,18 @@
 import { useQuery } from '@tanstack/react-query'
 import { buildApiUrl, protectedFetch } from '../lib/api'
 
-export type ChartRange = '1D' | '1W' | '1M' | '1Y' | 'ALL'
+export type ChartRange = 'intraday' | '1M' | '6M' | '1Y' | '3Y' | 'ALL'
 
 export type GraphPoint = {
   time: number
   price: number
 }
 
-export type ChartHistorySource = 'intraday' | 'weekly'
+export type ChartHistorySource = 'intraday' | 'daily'
 
 export type ChartHistoryResponse = {
   symbol: string
   range: ChartRange
-  status: 'READY' | 'BOOTSTRAPPING'
   source: ChartHistorySource
   points: GraphPoint[]
 }
@@ -36,7 +35,6 @@ export function useStockChart(ticker: string, range: ChartRange) {
     queryKey: ['stock-chart', ticker, range],
     queryFn: () => fetchStockChart(ticker, range),
     enabled: ticker.trim().length > 0,
-    refetchInterval: (query) => (query.state.data?.status === 'BOOTSTRAPPING' ? 2000 : false),
     staleTime: 1000 * 30,
   })
 }

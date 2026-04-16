@@ -58,8 +58,8 @@ func TestLatestPositivePointRejectsMissingPrices(t *testing.T) {
 
 func TestFetchJSONDecodesLangSchwarzResponse(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Header.Get("Referer") != "https://www.ls-x.de/" {
-			t.Fatalf("Referer header = %q, want %q", r.Header.Get("Referer"), "https://www.ls-x.de/")
+		if r.Header.Get("Referer") != "https://www.ls-tc.de/" {
+			t.Fatalf("Referer header = %q, want %q", r.Header.Get("Referer"), "https://www.ls-tc.de/")
 		}
 		if r.Header.Get("Accept") != "application/json" {
 			t.Fatalf("Accept header = %q, want application/json", r.Header.Get("Accept"))
@@ -198,8 +198,8 @@ func TestFetchMetaMapsLangSchwarzData(t *testing.T) {
 	oldClient := httpClient
 	httpClient = &http.Client{
 		Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
-			if r.Header.Get("Referer") != "https://www.ls-x.de/" {
-				t.Fatalf("Referer header = %q, want %q", r.Header.Get("Referer"), "https://www.ls-x.de/")
+			if r.Header.Get("Referer") != "https://www.ls-tc.de/" {
+				t.Fatalf("Referer header = %q, want %q", r.Header.Get("Referer"), "https://www.ls-tc.de/")
 			}
 			if r.Header.Get("User-Agent") == "" {
 				t.Fatal("User-Agent header is empty")
@@ -221,8 +221,8 @@ func TestFetchMetaMapsLangSchwarzData(t *testing.T) {
 				if r.URL.Query().Get("instrumentId") != "41780" {
 					t.Fatalf("instrumentId = %q, want 41780", r.URL.Query().Get("instrumentId"))
 				}
-				if r.URL.Query().Get("marketId") != "2" {
-					t.Fatalf("marketId = %q, want 2", r.URL.Query().Get("marketId"))
+				if r.URL.Query().Get("marketId") != "1" {
+					t.Fatalf("marketId = %q, want 1", r.URL.Query().Get("marketId"))
 				}
 				if r.URL.Query().Get("quotetype") != "mid" {
 					t.Fatalf("quotetype = %q, want mid", r.URL.Query().Get("quotetype"))

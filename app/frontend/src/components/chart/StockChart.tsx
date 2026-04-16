@@ -7,15 +7,16 @@ import {
   Tooltip,
   ReferenceLine,
 } from 'recharts'
-import { useState } from 'react'
 import { CustomTooltip } from './CustomTooltip'
 import { formatDate, formatPrice, getIntradayAxisConfig } from '../../utils/chart-helper'
-import { useStockChart, type ChartRange } from '../../hooks/useStockChart'
+import { type ChartHistoryResponse, type ChartRange } from '../../hooks/useStockChart'
 import ChartFilter from './ChartFilter'
 
 interface StockChartProps {
   ticker: string
-  initialRange?: ChartRange
+  range: ChartRange
+  onRangeChange: (range: ChartRange) => void
+  data?: ChartHistoryResponse
 }
 
 const MIN_GRID_STEPS_PER_SIDE = 2
@@ -27,12 +28,22 @@ const AXIS_TICK_STYLE = {
   fontWeight: 400,
 } as const
 const X_AXIS_TICK_COUNT_BY_RANGE: Record<ChartRange, number> = {
-  '1D': 5,
-  '1W': 4,
+  intraday: 5,
   '1M': 4,
+  '6M': 4,
   '1Y': 4,
+  '3Y': 4,
   ALL: 4,
 }
+
+const RANGE_OPTIONS: Array<{ value: ChartRange; label: string }> = [
+  { value: 'intraday', label: 'Intraday' },
+  { value: '1M', label: '1M' },
+  { value: '6M', label: '6M' },
+  { value: '1Y', label: '1Y' },
+  { value: '3Y', label: '3Y' },
+  { value: 'ALL', label: 'All' },
+]
 
 function getPriceAxisConfig(points: { price: number }[]) {
   const baseline = points[0]?.price ?? 0
@@ -68,7 +79,7 @@ function getXAxisTicks(
   range: ChartRange,
   intradayTicks: readonly number[],
 ) {
-  if (range === '1D') return intradayTicks
+  if (range === 'intraday') return intradayTicks
 
   if (points.length === 0) return []
   if (points.length === 1) return [points[0].x]
@@ -91,15 +102,12 @@ function getPriceAxisWidth(ticks: number[]) {
   return longestLabelLength * 10
 }
 
-const StockChart = ({ ticker, initialRange = '1D' }: StockChartProps) => {
-  const [range, setRange] = useState<ChartRange>(initialRange)
-  const { data } = useStockChart(ticker, range)
-
+const StockChart = ({ ticker, range, onRangeChange, data }: StockChartProps) => {
   const points = !data?.points
     ? []
     : data.points.map((point, index) => ({
         ...point,
-        x: range === '1W' || range === '1M' ? index : point.time,
+        x: range === 'intraday' ? point.time : index,
       }))
 
   const intradayAxis = getIntradayAxisConfig(points[0]?.time)
@@ -114,11 +122,13 @@ const StockChart = ({ ticker, initialRange = '1D' }: StockChartProps) => {
   return (
     <div className="p-25 w-full h-full bg-surface border border-border rounded-xl">
       <div className="flex gap-8">
-        {(['1D', '1W', '1M', '1Y', 'ALL'] as ChartRange[]).map((r) => (
+        {RANGE_OPTIONS.map((option) => (
           <ChartFilter
-            label={r}
-            isActive={range === r}
-            setActive={(newRange) => setRange(newRange)}
+            key={option.value}
+            label={option.label}
+            isActive={range === option.value}
+            setActive={onRangeChange}
+            value={option.value}
           />
         ))}
       </div>
@@ -127,8 +137,8 @@ const StockChart = ({ ticker, initialRange = '1D' }: StockChartProps) => {
           <XAxis
             type="number"
             dataKey="x"
-            scale={range === '1D' ? 'time' : 'linear'}
-            domain={range === '1D' ? intradayAxis.domain : ['dataMin', 'dataMax']}
+            scale={range === 'intraday' ? 'time' : 'linear'}
+            domain={range === 'intraday' ? intradayAxis.domain : ['dataMin', 'dataMax']}
             ticks={xAxisTicks}
             axisLine={false}
             tickLine={false}

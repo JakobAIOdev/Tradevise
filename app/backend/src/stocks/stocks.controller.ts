@@ -23,7 +23,7 @@ export class StocksController {
   }
 
   @Get(':ticker/chart')
-  chart(@Param('ticker') ticker: string, @Query('range') range = '1D') {
+  chart(@Param('ticker') ticker: string, @Query('range') range = 'intraday') {
     return this.stocksService.getChartHistory(ticker, range);
   }
 

@@ -35,9 +35,9 @@ const providerCooldownDuration = 60 * time.Second
 var ErrProviderCoolingDown = errors.New("market data provider cooldown active")
 
 const (
-	langSchwarzSearchURL = "https://www.ls-x.de/_rpc/json/.lstc/instrument/search/main"
-	langSchwarzChartURL  = "https://www.ls-x.de/_rpc/json/instrument/chart/dataForInstrument"
-	langSchwarzMarketID  = "2"
+	langSchwarzSearchURL = "https://www.ls-tc.de/_rpc/json/.lstc/instrument/search/main"
+	langSchwarzChartURL  = "https://www.ls-tc.de/_rpc/json/instrument/chart/dataForInstrument"
+	langSchwarzMarketID  = "1"
 	langSchwarzLocaleID  = "2"
 	langSchwarzQuoteType = "mid"
 	langSchwarzCurrency  = "EUR"
@@ -81,6 +81,14 @@ type langSchwarzChartResponse struct {
 type langSchwarzSeries struct {
 	Name string       `json:"name"`
 	Data [][2]float64 `json:"data"`
+}
+
+type MarketSnapshot struct {
+	Instrument     langSchwarzInstrument
+	IntradayPoints []model.PricePoint
+	DailyPoints    []model.PricePoint
+	Meta           model.StockMeta
+	LiveEvent      model.LivePriceEvent
 }
 
 type providerCooldownError struct {
@@ -172,7 +180,7 @@ func fetchJSON(ctx context.Context, requestURL string, target interface{}) error
 
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("User-Agent", userAgents[rand.Intn(len(userAgents))])
-	req.Header.Set("Referer", "https://www.ls-x.de/")
+	req.Header.Set("Referer", "https://www.ls-tc.de/")
 
 	resp, err := httpClient.Do(req)
 	if err != nil {
@@ -440,38 +448,14 @@ func fiftyTwoWeekRange(history []model.PricePoint) (float64, float64) {
 	return high, low
 }
 
-func weeklyClosePoints(history []model.PricePoint) []model.PricePoint {
-	points := make([]model.PricePoint, 0, len(history)/5)
-	var lastYear int
-	var lastWeek int
-
-	for _, point := range history {
-		if point.Time <= 0 || point.Price <= 0 {
-			continue
-		}
-
-		year, week := time.Unix(point.Time, 0).UTC().ISOWeek()
-		if len(points) == 0 || year != lastYear || week != lastWeek {
-			points = append(points, point)
-			lastYear = year
-			lastWeek = week
-			continue
-		}
-
-		points[len(points)-1] = point
-	}
-
-	return points
-}
-
 func chartPoints(chart langSchwarzChartResponse) ([]model.PricePoint, []model.PricePoint) {
 	return parseSeriesPoints(chart.Series.Intraday.Data), parseSeriesPoints(chart.Series.History.Data)
 }
 
-func FetchLivePrice(symbol string) (price float64, previousClose float64, change float64, changePercent float64, ts int64, err error) {
-	_, chart, err := fetchChart(context.Background(), symbol)
+func FetchMarketSnapshot(symbol string) (MarketSnapshot, error) {
+	instrument, chart, err := fetchChart(context.Background(), symbol)
 	if err != nil {
-		return 0, 0, 0, 0, 0, err
+		return MarketSnapshot{}, err
 	}
 
 	intradayPoints, historyPoints := chartPoints(chart)
@@ -480,64 +464,18 @@ func FetchLivePrice(symbol string) (price float64, previousClose float64, change
 		latest, ok = latestPositivePoint(historyPoints)
 	}
 	if !ok {
-		return 0, 0, 0, 0, 0, fmt.Errorf("no positive live price for %s", symbol)
-	}
-
-	price = latest.Price
-	ts = latest.Time
-	if previousClose, ok = previousCloseFromPlotlines(chart); !ok {
-		previousClose, _ = previousCloseFromHistory(ts, historyPoints)
-	}
-
-	change = price - previousClose
-	if previousClose != 0 {
-		changePercent = (change / previousClose) * 100
-	}
-
-	return price, previousClose, change, changePercent, ts, nil
-}
-
-func FetchIntraday(symbol string) ([]model.PricePoint, string, error) {
-	_, chart, err := fetchChart(context.Background(), symbol)
-	if err != nil {
-		return nil, "", err
-	}
-
-	points := parseSeriesPoints(chart.Series.Intraday.Data)
-
-	return points, langSchwarzCurrency, nil
-}
-
-func FetchBootstrapIntraday(symbol string) ([]model.PricePoint, string, error) {
-	return FetchIntraday(symbol)
-}
-
-func FetchBootstrapWeekly(symbol string) ([]model.PricePoint, string, error) {
-	_, chart, err := fetchChart(context.Background(), symbol)
-	if err != nil {
-		return nil, "", err
-	}
-
-	points := weeklyClosePoints(parseSeriesPoints(chart.Series.History.Data))
-
-	return points, langSchwarzCurrency, nil
-}
-
-func FetchMeta(symbol string) (model.StockMeta, error) {
-	instrument, chart, err := fetchChart(context.Background(), symbol)
-	if err != nil {
-		return model.StockMeta{}, err
-	}
-
-	intradayPoints, historyPoints := chartPoints(chart)
-	latest, ok := latestPositivePoint(intradayPoints)
-	if !ok {
-		latest, _ = latestPositivePoint(historyPoints)
+		return MarketSnapshot{}, fmt.Errorf("no positive live price for %s", symbol)
 	}
 
 	previousClose, ok := previousCloseFromPlotlines(chart)
 	if !ok {
 		previousClose, _ = previousCloseFromHistory(latest.Time, historyPoints)
+	}
+
+	change := latest.Price - previousClose
+	changePercent := 0.0
+	if previousClose != 0 {
+		changePercent = (change / previousClose) * 100
 	}
 
 	dayHigh, dayLow := dayRange(intradayPoints)
@@ -561,5 +499,82 @@ func FetchMeta(symbol string) (model.StockMeta, error) {
 		Volume:           0,
 	}
 
-	return meta, nil
+	snapshot := MarketSnapshot{
+		Instrument:     instrument,
+		IntradayPoints: intradayPoints,
+		DailyPoints:    historyPoints,
+		Meta:           meta,
+		LiveEvent: model.LivePriceEvent{
+			Symbol:           instrument.ISIN,
+			Price:            latest.Price,
+			Time:             latest.Time,
+			PreviousClose:    previousClose,
+			Change:           change,
+			ChangePercent:    changePercent,
+			DayHigh:          dayHigh,
+			DayLow:           dayLow,
+			FiftyTwoWeekHigh: fiftyTwoWeekHigh,
+			FiftyTwoWeekLow:  fiftyTwoWeekLow,
+		},
+	}
+
+	if point, ok := latestIntradayPoint(intradayPoints); ok {
+		pointCopy := point
+		snapshot.LiveEvent.IntradayPoint = &pointCopy
+	}
+
+	return snapshot, nil
+}
+
+func latestIntradayPoint(points []model.PricePoint) (model.PricePoint, bool) {
+	return latestPositivePoint(points)
+}
+
+func FetchLivePrice(symbol string) (price float64, previousClose float64, change float64, changePercent float64, ts int64, err error) {
+	snapshot, err := FetchMarketSnapshot(symbol)
+	if err != nil {
+		return 0, 0, 0, 0, 0, err
+	}
+
+	return snapshot.LiveEvent.Price,
+		snapshot.LiveEvent.PreviousClose,
+		snapshot.LiveEvent.Change,
+		snapshot.LiveEvent.ChangePercent,
+		snapshot.LiveEvent.Time,
+		nil
+}
+
+func FetchIntraday(symbol string) ([]model.PricePoint, string, error) {
+	_, chart, err := fetchChart(context.Background(), symbol)
+	if err != nil {
+		return nil, "", err
+	}
+
+	points := parseSeriesPoints(chart.Series.Intraday.Data)
+
+	return points, langSchwarzCurrency, nil
+}
+
+func FetchBootstrapIntraday(symbol string) ([]model.PricePoint, string, error) {
+	return FetchIntraday(symbol)
+}
+
+func FetchDaily(symbol string) ([]model.PricePoint, string, error) {
+	_, chart, err := fetchChart(context.Background(), symbol)
+	if err != nil {
+		return nil, "", err
+	}
+
+	points := parseSeriesPoints(chart.Series.History.Data)
+
+	return points, langSchwarzCurrency, nil
+}
+
+func FetchMeta(symbol string) (model.StockMeta, error) {
+	snapshot, err := FetchMarketSnapshot(symbol)
+	if err != nil {
+		return model.StockMeta{}, err
+	}
+
+	return snapshot.Meta, nil
 }

@@ -23,7 +23,6 @@ export interface Statistic {
 
 export type StockStatistics = {
   symbol: string
-  status: 'READY' | 'BOOTSTRAPPING'
   name: string | null
   currency: string | null
   exchange: string | null

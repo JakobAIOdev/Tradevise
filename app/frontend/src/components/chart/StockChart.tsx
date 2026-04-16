@@ -83,6 +83,14 @@ function getXAxisTicks(
   return Array.from(new Set(sampledIndices)).map((index) => points[index].x)
 }
 
+function getPriceAxisWidth(ticks: number[]) {
+  const longestLabelLength = ticks.reduce((max, tick) => {
+    return Math.max(max, formatPrice(tick).length)
+  }, 0)
+
+  return longestLabelLength * 10
+}
+
 const StockChart = ({ ticker, initialRange = '1D' }: StockChartProps) => {
   const [range, setRange] = useState<ChartRange>(initialRange)
   const { data } = useStockChart(ticker, range)
@@ -97,6 +105,7 @@ const StockChart = ({ ticker, initialRange = '1D' }: StockChartProps) => {
   const intradayAxis = getIntradayAxisConfig(points[0]?.time)
   const xAxisTicks = getXAxisTicks(points, range, intradayAxis.ticks)
   const priceAxis = getPriceAxisConfig(points)
+  const priceAxisWidth = getPriceAxisWidth(priceAxis.ticks)
   const gridTicks = priceAxis.ticks.filter((tick) => tick !== priceAxis.baseline)
 
   const baseline = points[0]?.price
@@ -138,7 +147,7 @@ const StockChart = ({ ticker, initialRange = '1D' }: StockChartProps) => {
             axisLine={false}
             tickLine={false}
             ticks={priceAxis.ticks}
-            width={72}
+            width={priceAxisWidth}
             dx={10}
             tick={AXIS_TICK_STYLE}
             tickFormatter={(value) => formatPrice(value)}

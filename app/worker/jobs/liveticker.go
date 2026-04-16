@@ -38,7 +38,7 @@ func RunLiveTicker(rdb *goredis.Client, sym *store.SymbolStore) {
 		for _, symbol := range active {
 			if err := publishLivePrice(rdb, symbol); err != nil {
 				log.Printf("[LiveTicker] fetch failed for %s: %s", symbol, err)
-				if scraper.IsYahooCoolingDownError(err) {
+				if scraper.IsProviderCoolingDownError(err) {
 					break
 				}
 				time.Sleep(300 * time.Millisecond)
@@ -60,7 +60,7 @@ func runLiveTickerFetchNow(rdb *goredis.Client) {
 		if symbol == "" {
 			continue
 		}
-		if scraper.IsYahooCoolingDown() {
+		if scraper.IsProviderCoolingDown() {
 			continue
 		}
 		if _, loaded := inFlight.LoadOrStore(symbol, struct{}{}); loaded {
@@ -74,7 +74,7 @@ func runLiveTickerFetchNow(rdb *goredis.Client) {
 				<-limiter
 			}()
 
-			if scraper.IsYahooCoolingDown() {
+			if scraper.IsProviderCoolingDown() {
 				return
 			}
 

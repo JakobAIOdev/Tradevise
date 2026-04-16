@@ -12,45 +12,45 @@ func newTestSymbolStore() *SymbolStore {
 func TestAddAndGetTracked(t *testing.T) {
 	s := newTestSymbolStore()
 
-	s.AddTracked("AAPL", "USD")
-	s.AddTracked("SAP.DE", "EUR")
+	s.AddTracked("US0378331005", "EUR")
+	s.AddTracked("DE0007164600", "EUR")
 
 	got := s.GetTracked()
-	if got["AAPL"] != "USD" {
-		t.Fatalf("AAPL currency = %q, want %q", got["AAPL"], "USD")
+	if got["US0378331005"] != "EUR" {
+		t.Fatalf("US0378331005 currency = %q, want %q", got["US0378331005"], "EUR")
 	}
-	if got["SAP.DE"] != "EUR" {
-		t.Fatalf("SAP.DE currency = %q, want %q", got["SAP.DE"], "EUR")
+	if got["DE0007164600"] != "EUR" {
+		t.Fatalf("DE0007164600 currency = %q, want %q", got["DE0007164600"], "EUR")
 	}
-	if !s.IsTracked("AAPL") {
-		t.Fatal("IsTracked(AAPL) = false, want true")
+	if !s.IsTracked("US0378331005") {
+		t.Fatal("IsTracked(US0378331005) = false, want true")
 	}
-	if s.IsTracked("MSFT") {
-		t.Fatal("IsTracked(MSFT) = true, want false")
+	if s.IsTracked("US5949181045") {
+		t.Fatal("IsTracked(US5949181045) = true, want false")
 	}
 }
 
 func TestGetTrackedReturnsCopy(t *testing.T) {
 	s := newTestSymbolStore()
-	s.AddTracked("AAPL", "USD")
+	s.AddTracked("US0378331005", "EUR")
 
 	got := s.GetTracked()
-	got["AAPL"] = "EUR"
-	got["MSFT"] = "USD"
+	got["US0378331005"] = "USD"
+	got["US5949181045"] = "EUR"
 
 	again := s.GetTracked()
-	if again["AAPL"] != "USD" {
-		t.Fatalf("tracked AAPL currency mutated to %q, want %q", again["AAPL"], "USD")
+	if again["US0378331005"] != "EUR" {
+		t.Fatalf("tracked US0378331005 currency mutated to %q, want %q", again["US0378331005"], "EUR")
 	}
-	if _, ok := again["MSFT"]; ok {
-		t.Fatal("external mutation added MSFT to tracked symbols")
+	if _, ok := again["US5949181045"]; ok {
+		t.Fatal("external mutation added US5949181045 to tracked symbols")
 	}
 }
 
 func TestSetAndGetActive(t *testing.T) {
 	s := newTestSymbolStore()
 
-	s.SetActive([]string{"AAPL", "MSFT"})
+	s.SetActive([]string{"US0378331005", "US5949181045"})
 	got := s.GetActive()
 
 	if len(got) != 2 {
@@ -61,19 +61,19 @@ func TestSetAndGetActive(t *testing.T) {
 	for _, symbol := range got {
 		active[symbol] = true
 	}
-	if !active["AAPL"] || !active["MSFT"] {
-		t.Fatalf("GetActive() = %v, want AAPL and MSFT", got)
+	if !active["US0378331005"] || !active["US5949181045"] {
+		t.Fatalf("GetActive() = %v, want US0378331005 and US5949181045", got)
 	}
 }
 
 func TestSetActiveReplacesPreviousSymbols(t *testing.T) {
 	s := newTestSymbolStore()
 
-	s.SetActive([]string{"AAPL", "MSFT"})
-	s.SetActive([]string{"SAP.DE"})
+	s.SetActive([]string{"US0378331005", "US5949181045"})
+	s.SetActive([]string{"DE0007164600"})
 
 	got := s.GetActive()
-	if len(got) != 1 || got[0] != "SAP.DE" {
-		t.Fatalf("GetActive() = %v, want [SAP.DE]", got)
+	if len(got) != 1 || got[0] != "DE0007164600" {
+		t.Fatalf("GetActive() = %v, want [DE0007164600]", got)
 	}
 }

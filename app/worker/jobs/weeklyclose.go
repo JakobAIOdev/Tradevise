@@ -38,7 +38,7 @@ func runWeeklyClose(pool *pgxpool.Pool, sym *store.SymbolStore) {
 		points, _, err := scraper.FetchBootstrapWeekly(symbol)
 		if err != nil {
 			log.Printf("[WeeklyClose] fetch failed for %s: %s", symbol, err)
-			if scraper.IsYahooCoolingDownError(err) {
+			if scraper.IsProviderCoolingDownError(err) {
 				break
 			}
 			time.Sleep(300 * time.Millisecond)

@@ -1,6 +1,6 @@
 import StatisticContainer from './StatisticContainer'
 import { LoaderCircle } from 'lucide-react'
-import type { Statistic, StockStatistics } from '../../Types'
+import type { Statistic, StockStatistics } from '../../types'
 import { formatMoney } from '../../utils/format'
 
 type KeyStatisticsProps = {

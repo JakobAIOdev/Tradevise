@@ -9,7 +9,7 @@ import {
 } from 'recharts'
 import { CustomTooltip } from './CustomTooltip'
 import { formatDate, formatPrice, getIntradayAxisConfig } from '../../utils/chart-helper'
-import { type ChartHistoryResponse, type ChartRange } from '../../hooks/useStockChart'
+import type { ChartHistoryResponse, ChartRange } from '../../types/chart'
 import ChartFilter from './ChartFilter'
 
 interface StockChartProps {

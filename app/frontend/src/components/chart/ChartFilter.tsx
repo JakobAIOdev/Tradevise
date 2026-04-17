@@ -1,4 +1,4 @@
-import type { ChartRange } from '../../hooks/useStockChart'
+import type { ChartRange } from '../../types/chart'
 
 interface ChartFilterProps {
   label: string

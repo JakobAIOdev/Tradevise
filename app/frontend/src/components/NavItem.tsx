@@ -1,4 +1,4 @@
-import { NavLink } from 'react-router-dom'
+import { NavLink, useLocation } from 'react-router-dom'
 import type { LucideIcon } from 'lucide-react'
 
 interface NavItemProps {
@@ -6,17 +6,21 @@ interface NavItemProps {
   icon: LucideIcon
   label: string
   collapsed: boolean
+  disabled: boolean
 }
 
-export default function NavItem({ to, icon: Icon, label, collapsed }: NavItemProps) {
+export default function NavItem({ to, icon: Icon, label, collapsed, disabled }: NavItemProps) {
+  const location = useLocation()
+
   return (
     <NavLink
-      to={to}
+      to={disabled ? (location?.pathname ?? '/') : to}
       title={collapsed ? label : undefined}
       className={({ isActive }) =>
         `relative group flex items-center transition-[background-color,color,padding,gap] duration-200 ease-out rounded-lg text-small font-medium
         ${collapsed ? 'justify-center p-10' : 'gap-3 px-15 py-10'}
-        ${isActive ? 'bg-surface-hover text-text' : 'text-muted hover:bg-surface-hover hover:text-text'}`
+        ${isActive ? 'bg-surface-hover text-text' : 'text-muted hover:bg-surface-hover hover:text-text'}
+        ${disabled ? 'opacity-50 cursor-not-allowed bg-transparent!' : ''}`
       }
     >
       <Icon size={20} strokeWidth={1.5} className="shrink-0" />

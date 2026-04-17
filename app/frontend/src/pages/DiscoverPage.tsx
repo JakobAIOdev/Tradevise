@@ -22,7 +22,7 @@ export default function DiscoverPage() {
             Live stocks could not be loaded. <Link to="/login">Open dev login</Link>.
           </p>
         )}
-        <StockGrid title="Popular Cryptos" stocks={MOCK_CRYPTOS} />
+        <StockGrid title="Popular Cryptos" stocks={MOCK_CRYPTOS} interactive={false} />
       </div>
     </div>
   )

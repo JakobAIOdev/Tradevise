@@ -21,8 +21,7 @@ type StockDetailLocationState = {
 
 function getRangePerformance(stock: Stock, prices: number[] | undefined): Stock {
   const firstPrice = prices?.[0]
-  const lastPrice =
-    prices && prices.length > 0 ? prices[prices.length - 1] : undefined
+  const lastPrice = prices && prices.length > 0 ? prices[prices.length - 1] : undefined
 
   if (
     typeof firstPrice !== 'number' ||
@@ -131,7 +130,7 @@ export default function StockDetailPage() {
             <p className="text-text text-body">About {stock.name}</p>
             <ExternalLink size={20} strokeWidth={1.5} className="text-muted" />
           </div>
-          <p className="text-muted text-small">
+          <p className="text-muted text-small mt-6">
             {stock.name} {stock.ticker}.
           </p>
         </div>

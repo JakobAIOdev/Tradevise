@@ -2,7 +2,7 @@ import { useQueries } from '@tanstack/react-query'
 import PageTitle from '../components/PageTitle'
 import HoldingsTable from '../components/portfolio/HoldingsTable'
 import type { PortfolioTableRow } from '../components/portfolio/TableColumns'
-import type { StockStatistics } from '../Types'
+import type { StockStatistics } from '../types'
 import { usePortfolio } from '../hooks/usePortfolio'
 import { buildApiUrl, protectedFetch } from '../lib/api'
 

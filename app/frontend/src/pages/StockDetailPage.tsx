@@ -10,10 +10,11 @@ import StockChart from '../components/chart/StockChart'
 import { useLocation, useParams } from 'react-router-dom'
 import { useStockLivePrice } from '../hooks/useStockLivePrice'
 import { useStockStatistics } from '../hooks/useStockStatistics'
-import { type ChartRange, useStockChart } from '../hooks/useStockChart'
+import { useStockChart } from '../hooks/useStockChart'
 import { usePortfolio } from '../hooks/usePortfolio'
-import type { Stock } from '../Types'
+import type { Stock } from '../types'
 import { useModalStore } from '../stores/useModalStore'
+import type { ChartRange } from '../types/chart'
 
 type StockDetailLocationState = {
   stock?: Stock

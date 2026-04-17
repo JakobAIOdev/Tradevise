@@ -1,21 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { buildApiUrl, protectedFetch } from '../lib/api'
-
-export type ChartRange = 'intraday' | '1M' | '6M' | '1Y' | '3Y' | 'ALL'
-
-export type GraphPoint = {
-  time: number
-  price: number
-}
-
-export type ChartHistorySource = 'intraday' | 'daily'
-
-export type ChartHistoryResponse = {
-  symbol: string
-  range: ChartRange
-  source: ChartHistorySource
-  points: GraphPoint[]
-}
+import type { ChartHistoryResponse, ChartRange } from '../types/chart'
 
 async function fetchStockChart(ticker: string, range: ChartRange): Promise<ChartHistoryResponse> {
   const params = new URLSearchParams({ range })

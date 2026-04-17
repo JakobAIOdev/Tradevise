@@ -1,6 +1,10 @@
 import { useQuery } from '@tanstack/react-query'
 import { buildApiUrl, protectedFetch } from '../lib/api'
-import type { Portfolio } from '../Types'
+import type { Portfolio } from '../types'
+
+type UsePortfolioOptions = {
+  refetchInterval?: number | false
+}
 
 async function fetchPortfolio(): Promise<Portfolio> {
   const res = await protectedFetch(buildApiUrl('/portfolio'))
@@ -12,10 +16,13 @@ async function fetchPortfolio(): Promise<Portfolio> {
   return (await res.json()) as Portfolio
 }
 
-export function usePortfolio() {
+export function usePortfolio(options?: UsePortfolioOptions) {
   return useQuery({
     queryKey: ['portfolio'],
     queryFn: fetchPortfolio,
     staleTime: 1000 * 30,
+    refetchInterval: options?.refetchInterval ?? false,
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
   })
 }

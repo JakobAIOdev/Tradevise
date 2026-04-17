@@ -5,8 +5,8 @@ const NAV_ITEMS = [
   { to: '/home', icon: LayoutDashboard, label: 'Home' },
   { to: '/portfolio', icon: Wallet, label: 'Portfolio' },
   { to: '/discover', icon: Search, label: 'Discover' },
-  { to: '/ranking', icon: Trophy, label: 'Ranking' },
-  { to: '/groups', icon: Users, label: 'Groups' },
+  { to: '/ranking', icon: Trophy, label: 'Ranking', disabled: true },
+  { to: '/groups', icon: Users, label: 'Groups', disabled: true },
 ]
 
 interface SidebarProps {
@@ -26,7 +26,12 @@ export default function Sidebar({ collapsed }: SidebarProps) {
 
       <nav className="flex flex-col gap-8 flex-1 pt-8.75">
         {NAV_ITEMS.map((item) => (
-          <NavItem key={item.to} {...item} collapsed={collapsed} />
+          <NavItem
+            key={item.to}
+            {...item}
+            collapsed={collapsed}
+            disabled={item.disabled ?? false}
+          />
         ))}
       </nav>
     </aside>

@@ -1,4 +1,4 @@
-import type { PortfolioHolding } from '../../Types'
+import type { PortfolioHolding } from '../../types'
 import { formatMoney, formatShares } from '../../utils/format'
 
 type PositionSummaryProps = {

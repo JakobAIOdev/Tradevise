@@ -1,9 +1,9 @@
 import { useEffect } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import type { Stock, StockStatistics } from '../Types'
+import type { Stock, StockStatistics } from '../types'
 import { buildApiUrl } from '../lib/api'
 import { useAuthStore } from '../stores/authStore'
-import type { ChartHistoryResponse, GraphPoint } from './useStockChart'
+import type { ChartHistoryResponse, GraphPoint } from '../types/chart'
 
 type LiveStockEvent = {
   symbol: string

@@ -17,6 +17,41 @@ type TodayTransaction = {
   price: number;
 };
 
+type ChartRange = 'intraday' | '1M' | '6M' | '1Y' | '3Y' | 'ALL';
+
+type PortfolioChartResponse = {
+  symbol: string;
+  range: ChartRange;
+  source: 'intraday' | 'daily';
+  points: Array<{
+    time: number;
+    price: number;
+  }>;
+};
+
+type PortfolioChartTransaction = {
+  symbol: string;
+  type: 'BUY' | 'SELL';
+  quantity: number;
+  price: number;
+  total: number;
+  time: number;
+};
+
+type PortfolioPriceHistory = {
+  points: Array<{
+    time: number;
+    price: number;
+  }>;
+  previousPrice: number | null;
+};
+
+type PortfolioChartState = {
+  cash: number;
+  quantities: Map<string, number>;
+  latestKnownPrices: Map<string, number>;
+};
+
 @Injectable()
 export class PortfolioService {
   constructor(
@@ -83,9 +118,84 @@ export class PortfolioService {
       totalValue: cash + holdingsValue,
       todayChange,
       todayChangePercent,
-      holdings: enrichedHoldings.map(
-        ({ todayBaselineValue, ...holding }) => holding,
-      ),
+      todayBaselineValue,
+      holdings: enrichedHoldings,
+    };
+  }
+
+  async getPortfolioChart(
+    userId: string,
+    rangeInput: string,
+  ): Promise<PortfolioChartResponse> {
+    const range = this.parsePortfolioChartRange(rangeInput);
+    const portfolio = await this.ensurePortfolio(userId);
+    let { start, end, source } = this.getPortfolioChartWindow(range);
+
+    if (range === 'ALL') {
+      start = await this.resolveAllRangeStart(userId, portfolio.createdAt);
+    }
+
+    const normalizedTransactions = await this.loadPortfolioChartTransactions(
+      userId,
+      end,
+    );
+
+    if (normalizedTransactions.length === 0) {
+      return {
+        symbol: 'PORTFOLIO',
+        range,
+        source,
+        points: [
+          {
+            time: Math.floor(end.getTime() / 1000),
+            price: this.toNumber(portfolio.cash),
+          },
+        ],
+      };
+    }
+
+    const symbols = this.extractPortfolioChartSymbols(normalizedTransactions);
+
+    const priceHistoryBySymbol = await this.getPortfolioPriceHistory(
+      symbols,
+      start,
+      end,
+      source,
+    );
+    const livePricesBySymbol = await this.getLivePricesBySymbol(symbols);
+
+    const initialCash = this.deriveInitialCash(
+      this.toNumber(portfolio.cash),
+      normalizedTransactions,
+    );
+    const rangeStartTimestamp = Math.floor(start.getTime() / 1000);
+    const rangeEndTimestamp = Math.floor(end.getTime() / 1000);
+    const state = this.seedPortfolioChartState({
+      symbols,
+      initialCash,
+      normalizedTransactions,
+      priceHistoryBySymbol,
+      livePricesBySymbol,
+      rangeStartTimestamp,
+    });
+    const timeline = this.buildPortfolioTimeline({
+      normalizedTransactions,
+      priceHistoryBySymbol,
+      livePricesBySymbol,
+      rangeStartTimestamp,
+      rangeEndTimestamp,
+    });
+    const points = this.calculatePortfolioChartPoints({
+      timeline,
+      normalizedTransactions,
+      state,
+    });
+
+    return {
+      symbol: 'PORTFOLIO',
+      range,
+      source,
+      points,
     };
   }
 
@@ -332,6 +442,454 @@ export class PortfolioService {
     );
 
     return { change, baselineValue };
+  }
+
+  private async resolveAllRangeStart(userId: string, fallbackDate: Date) {
+    const firstTransaction = await this.prisma.transaction.findFirst({
+      where: { userId },
+      orderBy: { createdAt: 'asc' },
+      select: { createdAt: true },
+    });
+
+    const start = new Date(firstTransaction?.createdAt ?? fallbackDate);
+    start.setHours(0, 0, 0, 0);
+    return start;
+  }
+
+  private async loadPortfolioChartTransactions(userId: string, end: Date) {
+    const transactions = await this.prisma.transaction.findMany({
+      where: {
+        userId,
+        createdAt: {
+          lte: end,
+        },
+      },
+      orderBy: {
+        createdAt: 'asc',
+      },
+      select: {
+        symbol: true,
+        type: true,
+        quantity: true,
+        price: true,
+        total: true,
+        createdAt: true,
+      },
+    });
+
+    return transactions.map(
+      (transaction): PortfolioChartTransaction => ({
+        symbol: transaction.symbol,
+        type: transaction.type,
+        quantity: this.toNumber(transaction.quantity),
+        price: this.toNumber(transaction.price),
+        total: this.toNumber(transaction.total),
+        time: Math.floor(transaction.createdAt.getTime() / 1000),
+      }),
+    );
+  }
+
+  private extractPortfolioChartSymbols(
+    transactions: PortfolioChartTransaction[],
+  ) {
+    return [...new Set(transactions.map((transaction) => transaction.symbol))];
+  }
+
+  private seedPortfolioChartState({
+    symbols,
+    initialCash,
+    normalizedTransactions,
+    priceHistoryBySymbol,
+    livePricesBySymbol,
+    rangeStartTimestamp,
+  }: {
+    symbols: string[];
+    initialCash: number;
+    normalizedTransactions: PortfolioChartTransaction[];
+    priceHistoryBySymbol: Map<string, PortfolioPriceHistory>;
+    livePricesBySymbol: Map<string, number | null>;
+    rangeStartTimestamp: number;
+  }): PortfolioChartState {
+    const quantities = new Map<string, number>();
+    const latestKnownPrices = new Map<string, number>();
+    let cash = initialCash;
+
+    for (const symbol of symbols) {
+      const history = priceHistoryBySymbol.get(symbol);
+      const fallbackPrice =
+        history?.previousPrice ??
+        history?.points[0]?.price ??
+        livePricesBySymbol.get(symbol) ??
+        null;
+
+      if (typeof fallbackPrice === 'number' && fallbackPrice > 0) {
+        latestKnownPrices.set(symbol, fallbackPrice);
+      }
+    }
+
+    for (const transaction of normalizedTransactions) {
+      if (transaction.time >= rangeStartTimestamp) break;
+
+      cash = this.applyCashDelta(cash, transaction);
+      this.applyTransactionToPortfolioState(
+        quantities,
+        latestKnownPrices,
+        transaction,
+      );
+    }
+
+    return { cash, quantities, latestKnownPrices };
+  }
+
+  private buildPortfolioTimeline({
+    normalizedTransactions,
+    priceHistoryBySymbol,
+    livePricesBySymbol,
+    rangeStartTimestamp,
+    rangeEndTimestamp,
+  }: {
+    normalizedTransactions: PortfolioChartTransaction[];
+    priceHistoryBySymbol: Map<string, PortfolioPriceHistory>;
+    livePricesBySymbol: Map<string, number | null>;
+    rangeStartTimestamp: number;
+    rangeEndTimestamp: number;
+  }) {
+    const priceEventsByTime = new Map<
+      number,
+      Array<{ symbol: string; price: number }>
+    >();
+    const transactionEventsByTime = new Map<
+      number,
+      PortfolioChartTransaction[]
+    >();
+
+    for (const [symbol, history] of priceHistoryBySymbol.entries()) {
+      for (const point of history.points) {
+        if (
+          point.time < rangeStartTimestamp ||
+          point.time > rangeEndTimestamp
+        ) {
+          continue;
+        }
+
+        const eventsAtTime = priceEventsByTime.get(point.time) ?? [];
+        eventsAtTime.push({ symbol, price: point.price });
+        priceEventsByTime.set(point.time, eventsAtTime);
+      }
+    }
+
+    for (const transaction of normalizedTransactions) {
+      if (
+        transaction.time < rangeStartTimestamp ||
+        transaction.time > rangeEndTimestamp
+      ) {
+        continue;
+      }
+
+      const eventsAtTime = transactionEventsByTime.get(transaction.time) ?? [];
+      eventsAtTime.push(transaction);
+      transactionEventsByTime.set(transaction.time, eventsAtTime);
+    }
+
+    for (const [symbol, livePrice] of livePricesBySymbol.entries()) {
+      if (typeof livePrice !== 'number' || livePrice <= 0) continue;
+
+      const eventsAtTime = priceEventsByTime.get(rangeEndTimestamp) ?? [];
+      eventsAtTime.push({ symbol, price: livePrice });
+      priceEventsByTime.set(rangeEndTimestamp, eventsAtTime);
+    }
+
+    const timestamps = [
+      ...new Set([
+        rangeStartTimestamp,
+        rangeEndTimestamp,
+        ...priceEventsByTime.keys(),
+        ...transactionEventsByTime.keys(),
+      ]),
+    ].sort((left, right) => left - right);
+
+    return {
+      timestamps,
+      priceEventsByTime,
+      transactionEventsByTime,
+    };
+  }
+
+  private calculatePortfolioChartPoints({
+    timeline,
+    normalizedTransactions,
+    state,
+  }: {
+    timeline: {
+      timestamps: number[];
+      priceEventsByTime: Map<number, Array<{ symbol: string; price: number }>>;
+      transactionEventsByTime: Map<number, PortfolioChartTransaction[]>;
+    };
+    normalizedTransactions: PortfolioChartTransaction[];
+    state: PortfolioChartState;
+  }) {
+    const points: Array<{ time: number; price: number }> = [];
+    const { timestamps, priceEventsByTime, transactionEventsByTime } = timeline;
+    let cash = state.cash;
+    const quantities = new Map(state.quantities);
+    const latestKnownPrices = new Map(state.latestKnownPrices);
+
+    for (const timestamp of timestamps) {
+      for (const priceEvent of priceEventsByTime.get(timestamp) ?? []) {
+        latestKnownPrices.set(priceEvent.symbol, priceEvent.price);
+      }
+
+      for (const transaction of transactionEventsByTime.get(timestamp) ?? []) {
+        cash = this.applyCashDelta(cash, transaction);
+        this.applyTransactionToPortfolioState(
+          quantities,
+          latestKnownPrices,
+          transaction,
+        );
+      }
+
+      points.push({
+        time: timestamp,
+        price: this.calculatePortfolioValue(
+          cash,
+          quantities,
+          latestKnownPrices,
+        ),
+      });
+    }
+
+    return points;
+  }
+
+  private parsePortfolioChartRange(rangeInput: string): ChartRange {
+    const trimmedRange = rangeInput.trim();
+    const normalizedRange =
+      trimmedRange.length > 0 ? trimmedRange.toUpperCase() : 'INTRADAY';
+
+    switch (normalizedRange) {
+      case 'INTRADAY':
+        return 'intraday';
+      case '1M':
+      case '6M':
+      case '1Y':
+      case '3Y':
+      case 'ALL':
+        return normalizedRange;
+    }
+
+    throw new BadRequestException(
+      'Invalid range. Allowed values: intraday, 1M, 6M, 1Y, 3Y, ALL',
+    );
+  }
+
+  private getPortfolioChartWindow(range: ChartRange) {
+    const end = new Date();
+    const start = new Date(end);
+
+    switch (range) {
+      case 'intraday':
+        start.setUTCHours(7, 0, 0, 0);
+        return { start, end, source: 'intraday' as const };
+      case '1M':
+        start.setMonth(start.getMonth() - 1);
+        break;
+      case '6M':
+        start.setMonth(start.getMonth() - 6);
+        break;
+      case '1Y':
+        start.setFullYear(start.getFullYear() - 1);
+        break;
+      case '3Y':
+        start.setFullYear(start.getFullYear() - 3);
+        break;
+      case 'ALL':
+        break;
+    }
+
+    start.setHours(0, 0, 0, 0);
+    return { start, end, source: 'daily' as const };
+  }
+
+  private async getPortfolioPriceHistory(
+    symbols: string[],
+    start: Date,
+    end: Date,
+    source: 'intraday' | 'daily',
+  ) {
+    const entries = await Promise.all(
+      symbols.map(async (symbol) => {
+        if (source === 'intraday') {
+          const [points, previousPoint] = await Promise.all([
+            this.prisma.priceIntraday.findMany({
+              where: {
+                symbol,
+                time: {
+                  gte: start,
+                  lte: end,
+                },
+              },
+              orderBy: {
+                time: 'asc',
+              },
+              select: {
+                time: true,
+                price: true,
+              },
+            }),
+            this.prisma.priceIntraday.findFirst({
+              where: {
+                symbol,
+                time: {
+                  lt: start,
+                },
+              },
+              orderBy: {
+                time: 'desc',
+              },
+              select: {
+                price: true,
+              },
+            }),
+          ]);
+
+          return [
+            symbol,
+            {
+              points: points.map((point) => ({
+                time: Math.floor(point.time.getTime() / 1000),
+                price: this.toNumber(point.price),
+              })),
+              previousPrice: previousPoint?.price
+                ? this.toNumber(previousPoint.price)
+                : null,
+            } satisfies PortfolioPriceHistory,
+          ] as const;
+        }
+
+        const [points, previousPoint] = await Promise.all([
+          this.prisma.priceDaily.findMany({
+            where: {
+              symbol,
+              date: {
+                gte: start,
+                lte: end,
+              },
+            },
+            orderBy: {
+              date: 'asc',
+            },
+            select: {
+              date: true,
+              price: true,
+            },
+          }),
+          this.prisma.priceDaily.findFirst({
+            where: {
+              symbol,
+              date: {
+                lt: start,
+              },
+            },
+            orderBy: {
+              date: 'desc',
+            },
+            select: {
+              price: true,
+            },
+          }),
+        ]);
+
+        return [
+          symbol,
+          {
+            points: points.map((point) => ({
+              time: Math.floor(point.date.getTime() / 1000),
+              price: this.toNumber(point.price),
+            })),
+            previousPrice: previousPoint?.price
+              ? this.toNumber(previousPoint.price)
+              : null,
+          } satisfies PortfolioPriceHistory,
+        ] as const;
+      }),
+    );
+
+    return new Map<string, PortfolioPriceHistory>(entries);
+  }
+
+  private async getLivePricesBySymbol(symbols: string[]) {
+    const entries = await Promise.all(
+      symbols.map(async (symbol) => {
+        const price = await this.getCachedLivePrice(symbol);
+        return [symbol, price] as const;
+      }),
+    );
+
+    return new Map<string, number | null>(entries);
+  }
+
+  private deriveInitialCash(
+    currentCash: number,
+    transactions: PortfolioChartTransaction[],
+  ) {
+    return transactions.reduce((cash, transaction) => {
+      if (transaction.type === 'BUY') {
+        return cash + transaction.total;
+      }
+
+      return cash - transaction.total;
+    }, currentCash);
+  }
+
+  private applyCashDelta(
+    cash: number,
+    transaction: Pick<PortfolioChartTransaction, 'type' | 'total'>,
+  ) {
+    return transaction.type === 'BUY'
+      ? cash - transaction.total
+      : cash + transaction.total;
+  }
+
+  private applyTransactionToPortfolioState(
+    quantities: Map<string, number>,
+    latestKnownPrices: Map<string, number>,
+    transaction: Pick<
+      PortfolioChartTransaction,
+      'symbol' | 'type' | 'quantity' | 'price'
+    >,
+  ) {
+    const currentQuantity = quantities.get(transaction.symbol) ?? 0;
+    const nextQuantity =
+      transaction.type === 'BUY'
+        ? currentQuantity + transaction.quantity
+        : Math.max(currentQuantity - transaction.quantity, 0);
+
+    if (nextQuantity > 0) {
+      quantities.set(transaction.symbol, nextQuantity);
+    } else {
+      quantities.delete(transaction.symbol);
+    }
+
+    if (transaction.price > 0) {
+      latestKnownPrices.set(transaction.symbol, transaction.price);
+    }
+  }
+
+  private calculatePortfolioValue(
+    cash: number,
+    quantities: Map<string, number>,
+    latestKnownPrices: Map<string, number>,
+  ) {
+    let holdingsValue = 0;
+
+    for (const [symbol, quantity] of quantities.entries()) {
+      const latestPrice = latestKnownPrices.get(symbol);
+      if (typeof latestPrice !== 'number' || latestPrice <= 0) continue;
+
+      holdingsValue += quantity * latestPrice;
+    }
+
+    return cash + holdingsValue;
   }
 
   private async getTradePrice(symbol: string) {

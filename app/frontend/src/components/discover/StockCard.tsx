@@ -1,4 +1,4 @@
-import type { Stock } from '../../Types'
+import type { Stock } from '../../types'
 import { ChevronUp, ChevronDown } from 'lucide-react'
 import StockLogo from '../StockLogo'
 import { Link } from 'react-router-dom'

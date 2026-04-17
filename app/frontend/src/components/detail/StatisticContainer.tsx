@@ -1,4 +1,4 @@
-import type { Statistic } from '../../Types'
+import type { Statistic } from '../../types'
 
 type StatisticContainerProps = Statistic & {
   fullWidth?: boolean

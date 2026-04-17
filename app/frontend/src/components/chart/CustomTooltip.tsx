@@ -1,6 +1,6 @@
 import { type TooltipContentProps } from 'recharts'
 import { formatPrice } from '../../utils/chart-helper'
-import type { ChartHistorySource } from '../../hooks/useStockChart'
+import type { ChartHistorySource } from '../../types/chart'
 
 type CustomTooltipProps = TooltipContentProps & {
   source: ChartHistorySource

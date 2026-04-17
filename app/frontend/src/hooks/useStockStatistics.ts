@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { buildApiUrl, protectedFetch } from '../lib/api'
-import type { StockStatistics } from '../Types'
+import type { StockStatistics } from '../types'
 
 async function fetchStockStatistics(ticker: string): Promise<StockStatistics> {
   const res = await protectedFetch(buildApiUrl(`/stocks/${encodeURIComponent(ticker)}/statistics`))

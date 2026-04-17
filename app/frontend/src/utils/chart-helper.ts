@@ -1,4 +1,4 @@
-import type { ChartRange } from '../hooks/useStockChart'
+import type { ChartRange } from '../types/chart'
 
 export function getIntradayAxisConfig(anchorTimestamp?: number) {
   const anchorDate = anchorTimestamp ? new Date(anchorTimestamp * 1000) : new Date()

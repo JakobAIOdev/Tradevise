@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query'
 import Modal from './Modal'
 import { usePortfolio } from '../../hooks/usePortfolio'
 import { useTradeStock } from '../../hooks/useTradeStock'
-import type { Stock } from '../../Types'
+import type { Stock } from '../../types'
 import { formatInputNumber, formatMoney, formatShares } from '../../utils/format'
 
 type BuyMode = 'amount' | 'shares'

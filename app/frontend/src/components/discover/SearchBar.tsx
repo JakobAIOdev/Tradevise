@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useStockSearch } from '../../hooks/useStockSearch'
-import type { StockSuggestion } from '../../Types'
+import type { StockSuggestion } from '../../types'
 import { LoaderCircle, Search, X } from 'lucide-react'
 
 type SearchBarProps = {

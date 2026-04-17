@@ -1,4 +1,4 @@
-import type { Stock } from '../Types'
+import type { Stock } from '../types'
 
 const CRYPTO_LOGOS: Record<string, string> = {
   BTC: 'https://s2.coinmarketcap.com/static/img/coins/64x64/1.png',

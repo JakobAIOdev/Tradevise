@@ -1,4 +1,4 @@
-import type { Stock } from '../../Types'
+import type { Stock } from '../../types'
 import StockLogo from '../StockLogo'
 import { ChevronDown, ChevronUp, LoaderCircle } from 'lucide-react'
 

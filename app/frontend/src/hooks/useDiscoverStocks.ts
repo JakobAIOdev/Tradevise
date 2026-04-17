@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import type { Stock } from '../Types'
+import type { Stock } from '../types'
 import { buildApiUrl, protectedFetch } from '../lib/api'
 import { useAuthStore } from '../stores/authStore'
 

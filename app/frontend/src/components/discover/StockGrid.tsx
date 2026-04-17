@@ -1,4 +1,4 @@
-import type { Stock } from '../../Types'
+import type { Stock } from '../../types'
 import StockCard from './StockCard'
 import { TrendingUp } from 'lucide-react'
 

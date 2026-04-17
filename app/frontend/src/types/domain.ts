@@ -45,6 +45,7 @@ export type PortfolioHolding = {
   marketValue: number
   profitLoss: number
   todayChange: number
+  todayBaselineValue: number
 }
 
 export type Portfolio = {
@@ -55,4 +56,5 @@ export type Portfolio = {
   todayChange: number
   todayChangePercent: number
   holdings: PortfolioHolding[]
+  todayBaselineValue: number
 }

@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { useState, useEffect } from 'react'
-import type { StockSuggestion } from '../Types'
+import type { StockSuggestion } from '../types'
 import { buildApiUrl, protectedFetch } from '../lib/api'
 
 async function fetchStockSuggestions(query: string): Promise<StockSuggestion[]> {

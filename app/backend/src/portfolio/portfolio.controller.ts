@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Post, Query, UseGuards } from '@nestjs/common';
 import { CurrentUser } from '../auth/decorators/current-user.decorator.js';
 import { AccessTokenGuard } from '../auth/guards/access-token.guard.js';
 import { BuyStockDto } from './dto/buy-stock.dto.js';
@@ -13,6 +13,14 @@ export class PortfolioController {
   @Get()
   getPortfolio(@CurrentUser('sub') userId: string) {
     return this.portfolioService.getPortfolio(userId);
+  }
+
+  @Get('chart')
+  getChart(
+    @CurrentUser('sub') userId: string,
+    @Query('range') range = 'intraday',
+  ) {
+    return this.portfolioService.getPortfolioChart(userId, range);
   }
 
   @Post('buy')

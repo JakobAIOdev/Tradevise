@@ -2,33 +2,42 @@ import StatCard from '../components/StatCard'
 import { BarChart2, TrendingUp, Wallet } from 'lucide-react'
 import { getTrend } from '../utils/trend'
 import PageTitle from '../components/PageTitle'
-import { usePortfolio } from '../hooks/usePortfolio'
 import { formatMoney, formatSignedMoney, formatSignedPercent } from '../utils/format'
-
-const INITIAL_PORTFOLIO_VALUE = 10000
+import StockChart from '../components/chart/StockChart'
+import { useHomePortfolio } from '../hooks/useHomePortfolio'
 
 export default function HomePage() {
-  const { data: portfolio, isLoading, isError } = usePortfolio()
-
-  const cash = portfolio?.cash ?? 0
-  const totalValue = portfolio?.totalValue ?? 0
-  const todayChange = portfolio?.todayChange ?? 0
-  const todayChangePercent = portfolio?.todayChangePercent ?? 0
-  const totalProfitLoss = totalValue - INITIAL_PORTFOLIO_VALUE
+  const {
+    range,
+    setRange,
+    portfolio,
+    portfolioChart,
+    isLoading,
+    isError,
+    cash,
+    totalValue,
+    rangeLabel,
+    rangeChange,
+    rangeChangePercent,
+    totalProfitLoss,
+  } = useHomePortfolio()
   const loadingValue = isLoading ? 'Loading...' : '0.00 €'
   const errorSub = isError ? 'Could not load portfolio' : undefined
 
   return (
-    <>
+    <div className="flex flex-col gap-25">
       <PageTitle title="Home" />
       <div className="flex gap-25">
         <StatCard
           icon={TrendingUp}
-          label="Today"
-          value={portfolio ? formatSignedMoney(todayChange) : loadingValue}
-          valueTrend={portfolio ? getTrend(todayChange) : 'neutral'}
-          sub={errorSub ?? (portfolio ? formatSignedPercent(todayChangePercent) : 'Daily performance')}
-          subTrend={portfolio ? getTrend(todayChange) : 'neutral'}
+          label={rangeLabel}
+          value={portfolio ? formatSignedMoney(rangeChange) : loadingValue}
+          valueTrend={portfolio ? getTrend(rangeChange) : 'neutral'}
+          sub={
+            errorSub ??
+            (portfolio ? formatSignedPercent(rangeChangePercent) : 'Selected range performance')
+          }
+          subTrend={portfolio ? getTrend(rangeChange) : 'neutral'}
         />
         <StatCard
           icon={Wallet}
@@ -47,6 +56,18 @@ export default function HomePage() {
           subTrend="neutral"
         />
       </div>
-    </>
+
+      <div className="flex flex-col gap-10">
+        <p className="text-h2 text-text">Portfolio Performance</p>
+        <div className="h-111.5">
+          <StockChart
+            ticker="PORTFOLIO"
+            range={range}
+            onRangeChange={setRange}
+            data={portfolioChart}
+          />
+        </div>
+      </div>
+    </div>
   )
 }

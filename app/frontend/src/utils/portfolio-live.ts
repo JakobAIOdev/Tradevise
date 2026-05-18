@@ -63,28 +63,19 @@ export function applyLiveValueDeltaToChart(
   if (!chart || chart.points.length === 0 || valueDelta === 0) return chart
 
   const lastPoint = chart.points[chart.points.length - 1]
+  const liveTime = chart.range === 'intraday' ? getIntradayChartTimestamp(new Date()) : null
   const nextLastPoint = {
     ...lastPoint,
+    time: liveTime && liveTime > lastPoint.time ? liveTime : lastPoint.time,
     price: lastPoint.price + valueDelta,
-  }
-
-  if (chart.range !== 'intraday') {
-    return {
-      ...chart,
-      points: [...chart.points.slice(0, -1), nextLastPoint],
-    }
-  }
-
-  const now = Math.floor(Date.now() / 1000)
-  if (lastPoint.time === now) {
-    return {
-      ...chart,
-      points: [...chart.points.slice(0, -1), { ...nextLastPoint, time: now }],
-    }
   }
 
   return {
     ...chart,
-    points: [...chart.points, { time: now, price: nextLastPoint.price }],
+    points: [...chart.points.slice(0, -1), nextLastPoint],
   }
+}
+
+function getIntradayChartTimestamp(date: Date) {
+  return Math.floor((date.getTime() - date.getTimezoneOffset() * 60_000) / 1000)
 }

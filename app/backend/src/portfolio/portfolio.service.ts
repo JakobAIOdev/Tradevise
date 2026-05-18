@@ -134,10 +134,13 @@ export class PortfolioService {
     if (range === 'ALL') {
       start = await this.resolveAllRangeStart(userId, portfolio.createdAt);
     }
+    const timelineEnd =
+      source === 'intraday' ? this.toIntradayChartDate(end) : end;
 
     const normalizedTransactions = await this.loadPortfolioChartTransactions(
       userId,
       end,
+      source,
     );
 
     if (normalizedTransactions.length === 0) {
@@ -159,29 +162,37 @@ export class PortfolioService {
     const priceHistoryBySymbol = await this.getPortfolioPriceHistory(
       symbols,
       start,
-      end,
+      timelineEnd,
       source,
     );
-    const livePricesBySymbol = await this.getLivePricesBySymbol(symbols);
+    const [livePricesBySymbol, previousCloseBySymbol] = await Promise.all([
+      this.getLivePricesBySymbol(symbols),
+      source === 'intraday'
+        ? this.getPreviousClosesBySymbol(symbols)
+        : Promise.resolve(new Map<string, number | null>()),
+    ]);
 
     const initialCash = this.deriveInitialCash(
       this.toNumber(portfolio.cash),
       normalizedTransactions,
     );
     const rangeStartTimestamp = Math.floor(start.getTime() / 1000);
-    const rangeEndTimestamp = Math.floor(end.getTime() / 1000);
+    const rangeEndTimestamp = Math.floor(timelineEnd.getTime() / 1000);
     const state = this.seedPortfolioChartState({
       symbols,
       initialCash,
       normalizedTransactions,
       priceHistoryBySymbol,
       livePricesBySymbol,
+      previousCloseBySymbol,
+      source,
       rangeStartTimestamp,
     });
     const timeline = this.buildPortfolioTimeline({
       normalizedTransactions,
       priceHistoryBySymbol,
       livePricesBySymbol,
+      source,
       rangeStartTimestamp,
       rangeEndTimestamp,
     });
@@ -189,6 +200,8 @@ export class PortfolioService {
       timeline,
       normalizedTransactions,
       state,
+      source,
+      rangeStartTimestamp,
     });
 
     return {
@@ -456,7 +469,11 @@ export class PortfolioService {
     return start;
   }
 
-  private async loadPortfolioChartTransactions(userId: string, end: Date) {
+  private async loadPortfolioChartTransactions(
+    userId: string,
+    end: Date,
+    source: 'intraday' | 'daily',
+  ) {
     const transactions = await this.prisma.transaction.findMany({
       where: {
         userId,
@@ -484,7 +501,12 @@ export class PortfolioService {
         quantity: this.toNumber(transaction.quantity),
         price: this.toNumber(transaction.price),
         total: this.toNumber(transaction.total),
-        time: Math.floor(transaction.createdAt.getTime() / 1000),
+        time: Math.floor(
+          (source === 'intraday'
+            ? this.toIntradayChartDate(transaction.createdAt)
+            : transaction.createdAt
+          ).getTime() / 1000,
+        ),
       }),
     );
   }
@@ -501,6 +523,8 @@ export class PortfolioService {
     normalizedTransactions,
     priceHistoryBySymbol,
     livePricesBySymbol,
+    previousCloseBySymbol,
+    source,
     rangeStartTimestamp,
   }: {
     symbols: string[];
@@ -508,6 +532,8 @@ export class PortfolioService {
     normalizedTransactions: PortfolioChartTransaction[];
     priceHistoryBySymbol: Map<string, PortfolioPriceHistory>;
     livePricesBySymbol: Map<string, number | null>;
+    previousCloseBySymbol: Map<string, number | null>;
+    source: 'intraday' | 'daily';
     rangeStartTimestamp: number;
   }): PortfolioChartState {
     const quantities = new Map<string, number>();
@@ -516,11 +542,12 @@ export class PortfolioService {
 
     for (const symbol of symbols) {
       const history = priceHistoryBySymbol.get(symbol);
-      const fallbackPrice =
-        history?.previousPrice ??
-        history?.points[0]?.price ??
-        livePricesBySymbol.get(symbol) ??
-        null;
+      const fallbackPrice = this.getInitialChartPrice(
+        history,
+        livePricesBySymbol.get(symbol) ?? null,
+        previousCloseBySymbol.get(symbol) ?? null,
+        source,
+      );
 
       if (typeof fallbackPrice === 'number' && fallbackPrice > 0) {
         latestKnownPrices.set(symbol, fallbackPrice);
@@ -535,22 +562,38 @@ export class PortfolioService {
         quantities,
         latestKnownPrices,
         transaction,
+        { updatePrice: false },
       );
     }
 
     return { cash, quantities, latestKnownPrices };
   }
 
+  private getInitialChartPrice(
+    history: PortfolioPriceHistory | undefined,
+    livePrice: number | null,
+    previousClose: number | null,
+    source: 'intraday' | 'daily',
+  ) {
+    if (source === 'intraday') {
+      return previousClose ?? history?.points[0]?.price ?? livePrice ?? null;
+    }
+
+    return history?.previousPrice ?? history?.points[0]?.price ?? livePrice;
+  }
+
   private buildPortfolioTimeline({
     normalizedTransactions,
     priceHistoryBySymbol,
     livePricesBySymbol,
+    source,
     rangeStartTimestamp,
     rangeEndTimestamp,
   }: {
     normalizedTransactions: PortfolioChartTransaction[];
     priceHistoryBySymbol: Map<string, PortfolioPriceHistory>;
     livePricesBySymbol: Map<string, number | null>;
+    source: 'intraday' | 'daily';
     rangeStartTimestamp: number;
     rangeEndTimestamp: number;
   }) {
@@ -591,22 +634,32 @@ export class PortfolioService {
       transactionEventsByTime.set(transaction.time, eventsAtTime);
     }
 
-    for (const [symbol, livePrice] of livePricesBySymbol.entries()) {
-      if (typeof livePrice !== 'number' || livePrice <= 0) continue;
+    if (source === 'daily') {
+      for (const [symbol, livePrice] of livePricesBySymbol.entries()) {
+        if (typeof livePrice !== 'number' || livePrice <= 0) continue;
 
-      const eventsAtTime = priceEventsByTime.get(rangeEndTimestamp) ?? [];
-      eventsAtTime.push({ symbol, price: livePrice });
-      priceEventsByTime.set(rangeEndTimestamp, eventsAtTime);
+        const eventsAtTime = priceEventsByTime.get(rangeEndTimestamp) ?? [];
+        eventsAtTime.push({ symbol, price: livePrice });
+        priceEventsByTime.set(rangeEndTimestamp, eventsAtTime);
+      }
     }
 
-    const timestamps = [
-      ...new Set([
-        rangeStartTimestamp,
-        rangeEndTimestamp,
-        ...priceEventsByTime.keys(),
-        ...transactionEventsByTime.keys(),
-      ]),
-    ].sort((left, right) => left - right);
+    const timestamps =
+      source === 'intraday'
+        ? [
+            ...new Set([
+              ...priceEventsByTime.keys(),
+              ...transactionEventsByTime.keys(),
+            ]),
+          ].sort((left, right) => left - right)
+        : [
+            ...new Set([
+              rangeStartTimestamp,
+              rangeEndTimestamp,
+              ...priceEventsByTime.keys(),
+              ...transactionEventsByTime.keys(),
+            ]),
+          ].sort((left, right) => left - right);
 
     return {
       timestamps,
@@ -619,6 +672,8 @@ export class PortfolioService {
     timeline,
     normalizedTransactions,
     state,
+    source,
+    rangeStartTimestamp,
   }: {
     timeline: {
       timestamps: number[];
@@ -627,12 +682,25 @@ export class PortfolioService {
     };
     normalizedTransactions: PortfolioChartTransaction[];
     state: PortfolioChartState;
+    source: 'intraday' | 'daily';
+    rangeStartTimestamp: number;
   }) {
     const points: Array<{ time: number; price: number }> = [];
     const { timestamps, priceEventsByTime, transactionEventsByTime } = timeline;
     let cash = state.cash;
     const quantities = new Map(state.quantities);
     const latestKnownPrices = new Map(state.latestKnownPrices);
+
+    if (source === 'intraday') {
+      points.push({
+        time: rangeStartTimestamp,
+        price: this.calculatePortfolioValue(
+          cash,
+          quantities,
+          latestKnownPrices,
+        ),
+      });
+    }
 
     for (const timestamp of timestamps) {
       for (const priceEvent of priceEventsByTime.get(timestamp) ?? []) {
@@ -708,6 +776,10 @@ export class PortfolioService {
 
     start.setHours(0, 0, 0, 0);
     return { start, end, source: 'daily' as const };
+  }
+
+  private toIntradayChartDate(date: Date) {
+    return new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
   }
 
   private async getPortfolioPriceHistory(
@@ -828,6 +900,17 @@ export class PortfolioService {
     return new Map<string, number | null>(entries);
   }
 
+  private async getPreviousClosesBySymbol(symbols: string[]) {
+    const entries = await Promise.all(
+      symbols.map(async (symbol) => {
+        const previousClose = await this.getPreviousClose(symbol);
+        return [symbol, previousClose] as const;
+      }),
+    );
+
+    return new Map<string, number | null>(entries);
+  }
+
   private deriveInitialCash(
     currentCash: number,
     transactions: PortfolioChartTransaction[],
@@ -857,6 +940,7 @@ export class PortfolioService {
       PortfolioChartTransaction,
       'symbol' | 'type' | 'quantity' | 'price'
     >,
+    options: { updatePrice?: boolean } = {},
   ) {
     const currentQuantity = quantities.get(transaction.symbol) ?? 0;
     const nextQuantity =
@@ -870,7 +954,7 @@ export class PortfolioService {
       quantities.delete(transaction.symbol);
     }
 
-    if (transaction.price > 0) {
+    if (options.updatePrice !== false && transaction.price > 0) {
       latestKnownPrices.set(transaction.symbol, transaction.price);
     }
   }

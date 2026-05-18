@@ -1,0 +1,57 @@
+import { Link } from 'react-router-dom'
+import StockLogo from '../StockLogo'
+import { buildHoldingLinkState } from './holdingLinkState'
+import type { PortfolioTableRow } from './TableColumns'
+import {
+  formatMoney,
+  formatShares,
+  formatSignedMoney,
+  formatSignedPercent,
+} from '../../utils/format'
+import HoldingMetric from './HoldingMetric'
+
+type MobileHoldingCardProps = {
+  item: PortfolioTableRow
+}
+
+export default function MobileHoldingCard({ item }: MobileHoldingCardProps) {
+  const todayTone = item.todayChange >= 0 ? 'text-bullish' : 'text-bearish'
+  const totalTone = item.profitLoss >= 0 ? 'text-bullish' : 'text-bearish'
+
+  return (
+    <Link
+      to={`/detail/${encodeURIComponent(item.symbol)}`}
+      state={buildHoldingLinkState(item)}
+      className="block p-18 transition-colors hover:bg-surface-hover"
+    >
+      <div className="flex items-center gap-4">
+        <StockLogo src={item.logoUrl ?? ''} ticker={item.symbol} size={48} />
+        <div className="min-w-0">
+          <div className="text-body text-text truncate">{item.displayName}</div>
+          <div className="text-small text-muted">
+            {item.symbol} • {formatShares(item.quantity)} shares
+          </div>
+        </div>
+      </div>
+      <div className="mt-18 grid grid-cols-2 gap-x-12 gap-y-15">
+        <HoldingMetric label="Price" value={formatMoney(item.currentPrice)} />
+        <HoldingMetric label="Value" value={formatMoney(item.marketValue)} align="right" />
+        <HoldingMetric
+          label="Today"
+          value={formatSignedMoney(item.todayChange)}
+          subValue={
+            item.todayChangePercent !== null ? formatSignedPercent(item.todayChangePercent) : undefined
+          }
+          tone={todayTone}
+        />
+        <HoldingMetric
+          label="Total P/L"
+          value={formatSignedMoney(item.profitLoss)}
+          subValue={formatSignedPercent(item.totalPlPercent)}
+          tone={totalTone}
+          align="right"
+        />
+      </div>
+    </Link>
+  )
+}

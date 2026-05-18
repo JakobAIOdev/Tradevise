@@ -32,6 +32,7 @@ export function useTradeStock(type: TradeType) {
     mutationFn: (body: TradeStockBody) => tradeStock(type, body),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['portfolio'] })
+      void queryClient.invalidateQueries({ queryKey: ['portfolio-chart'] })
       void queryClient.invalidateQueries({ queryKey: ['portfolio-transactions'] })
     },
   })

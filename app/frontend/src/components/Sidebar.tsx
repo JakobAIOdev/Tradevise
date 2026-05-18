@@ -5,7 +5,7 @@ const NAV_ITEMS = [
   { to: '/home', icon: LayoutDashboard, label: 'Home' },
   { to: '/portfolio', icon: Wallet, label: 'Portfolio' },
   { to: '/discover', icon: Search, label: 'Discover' },
-  { to: '/ranking', icon: Trophy, label: 'Ranking', disabled: true },
+  { to: '/ranking', icon: Trophy, label: 'Ranking' },
   { to: '/groups', icon: Users, label: 'Groups', disabled: true },
 ]
 

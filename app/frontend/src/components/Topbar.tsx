@@ -11,7 +11,7 @@ export default function Topbar({ onToggle }: TopbarProps) {
 
   return (
     <div className="flex items-center justify-between w-full h-60 max-h-60 px-25 bg-surface border-b border-border transition-colors duration-200 ease-out">
-      <button onClick={onToggle}>
+      <button type="button" aria-label="Toggle navigation" onClick={onToggle}>
         <PanelLeft
           size={20}
           strokeWidth={1.5}

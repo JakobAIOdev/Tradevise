@@ -11,14 +11,19 @@ const NAV_ITEMS = [
 
 interface SidebarProps {
   collapsed: boolean
+  mobileOpen: boolean
+  onNavigate: () => void
 }
 
-export default function Sidebar({ collapsed }: SidebarProps) {
+export default function Sidebar({ collapsed, mobileOpen, onNavigate }: SidebarProps) {
   return (
     <aside
-      className={`flex flex-col h-screen bg-surface border-r border-border
-      transition-[width,padding,background-color,border-color] duration-200 ease-out shrink-0 py-25
-      ${collapsed ? 'w-64 px-10' : 'w-[240px] px-15'}`}
+      className={`fixed inset-y-0 left-0 z-40 flex h-screen flex-col border-r border-border bg-surface py-25 shadow-xl
+      transition-[transform,width,padding,background-color,border-color] duration-200 ease-out
+      ${mobileOpen ? 'translate-x-0' : '-translate-x-full'}
+      w-[240px] px-15
+      md:static md:z-auto md:shrink-0 md:translate-x-0 md:shadow-none
+      ${collapsed ? 'md:w-64 md:px-10' : 'md:w-[240px] md:px-15'}`}
     >
       <p className="font-bold text-[32px] tracking-[-1%] text-text text-center justify-center transition-colors duration-200 ease-out">
         {collapsed ? 'T' : 'Tradevise'}
@@ -31,6 +36,7 @@ export default function Sidebar({ collapsed }: SidebarProps) {
             {...item}
             collapsed={collapsed}
             disabled={item.disabled ?? false}
+            onNavigate={onNavigate}
           />
         ))}
       </nav>

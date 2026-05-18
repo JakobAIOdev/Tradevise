@@ -7,15 +7,28 @@ interface NavItemProps {
   label: string
   collapsed: boolean
   disabled: boolean
+  onNavigate: () => void
 }
 
-export default function NavItem({ to, icon: Icon, label, collapsed, disabled }: NavItemProps) {
+export default function NavItem({
+  to,
+  icon: Icon,
+  label,
+  collapsed,
+  disabled,
+  onNavigate,
+}: NavItemProps) {
   const location = useLocation()
 
   return (
     <NavLink
       to={disabled ? (location?.pathname ?? '/') : to}
       title={collapsed ? label : undefined}
+      onClick={() => {
+        if (!disabled) {
+          onNavigate()
+        }
+      }}
       className={({ isActive }) =>
         `relative group flex items-center transition-[background-color,color,padding,gap] duration-200 ease-out rounded-lg text-small font-medium
         ${collapsed ? 'justify-center p-10' : 'gap-3 px-15 py-10'}

@@ -126,7 +126,7 @@ export function SearchBar({ className = '', size = 'default' }: SearchBarProps) 
           aria-autocomplete="list"
           aria-expanded={showDropdown}
           className="
-            flex-1 bg-transparent border-none outline-none
+            min-w-0 flex-1 bg-transparent border-none outline-none
             text-small text-text placeholder:text-muted
           "
         />

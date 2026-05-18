@@ -105,7 +105,7 @@ export default function StockDetailPage() {
         />
       </div>
       <DetailHeader {...displayStock} />
-      <div className="grid grid-cols-[minmax(0,1fr)_19.6875rem] gap-6 mt-6">
+      <div className="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_19.6875rem]">
         <div className="flex-1 h-111.5 bg-red-400 rounded-xl">
           <StockChart ticker={ticker} range={range} onRangeChange={setRange} data={chart} />
         </div>
@@ -124,7 +124,7 @@ export default function StockDetailPage() {
           </div>
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-6 mt-6">
+      <div className="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-2">
         <PositionSummary holding={holding} isLoading={portfolioFetching && !portfolio} />
         <div className="bg-surface h-45 border border-border rounded-xl px-25 pt-5">
           <div className="flex justify-between">

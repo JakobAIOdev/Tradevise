@@ -16,9 +16,9 @@ export default function DetailHeader({
 
   return (
     <div className="pt-25">
-      <div className="grid grid-cols-[minmax(0,1fr)_19.6875rem] gap-6">
-        <div className="flex items-center justify-between">
-          <div className="flex gap-6 items-center">
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_19.6875rem]">
+        <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-6">
             <StockLogo src={logo} ticker={ticker} size={72} />
             <div>
               <h2 className="text-h2 text-text">{name}</h2>
@@ -26,8 +26,8 @@ export default function DetailHeader({
             </div>
           </div>
 
-          <div className="text-right">
-            <span className="flex min-h-10 items-center justify-end text-h2 text-text">
+          <div className="text-left sm:text-right">
+            <span className="flex min-h-10 items-center justify-start text-h2 text-text sm:justify-end">
               {hasPrice ? (
                 `${price.toFixed(2)} €`
               ) : (
@@ -38,7 +38,7 @@ export default function DetailHeader({
                 />
               )}
             </span>
-            <div className="flex flex-row gap-5 justify-end">
+            <div className="flex flex-row gap-5 sm:justify-end">
               <span className={positive ? 'text-bullish text-body' : 'text-bearish text-body'}>
                 {positive ? '+ ' : '- '}
                 {typeof changeValue === 'number' ? Math.abs(changeValue).toFixed(2) : '0.00'} €

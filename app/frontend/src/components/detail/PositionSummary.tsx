@@ -16,7 +16,7 @@ export default function PositionSummary({ holding, isLoading = false }: Position
 
   return (
     <div className="bg-surface h-45 border border-border rounded-xl px-25 pt-5">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center gap-x-8">
         <p className="text-text text-body">Your Position</p>
         {holding && (
           <span className={isPositive ? 'text-bullish text-small' : 'text-bearish text-small'}>

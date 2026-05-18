@@ -109,9 +109,9 @@ export default function StockDetailPage() {
         <div className="flex-1 h-111.5 bg-red-400 rounded-xl">
           <StockChart ticker={ticker} range={range} onRangeChange={setRange} data={chart} />
         </div>
-        <div className="flex flex-col">
+        <div className="flex flex-col xl:h-111.5">
           <KeyStatistics statistics={statistics} isLoading={statisticsFetching} />
-          <div className="flex w-full gap-3 pt-4">
+          <div className="flex w-full gap-3 pt-4 xl:mt-auto">
             <ActionButton
               label="Buy"
               action={() => open('buy', { symbol: ticker, price: stock.price })}

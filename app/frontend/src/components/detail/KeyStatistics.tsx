@@ -34,7 +34,7 @@ export default function KeyStatistics({ statistics, isLoading = false }: KeyStat
   const stats = buildStatistics(statistics)
 
   return (
-    <div className="flex h-95 w-full flex-col rounded-xl border border-border bg-surface px-5 pt-5 pb-6">
+    <div className="flex min-h-95 w-full flex-1 flex-col rounded-xl border border-border bg-surface px-5 pt-5 pb-6">
       <div className="mb-4 flex items-center justify-between">
         <p className="text-text text-body font-bold">Key Statistics</p>
         {isLoading && (

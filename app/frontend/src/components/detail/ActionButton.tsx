@@ -9,7 +9,7 @@ export default function ActionButton({ label, action, disabled = false }: Action
     <button
       onClick={action}
       disabled={disabled}
-      className={`px-6 py-2 rounded-lg font-bold text-surface w-full
+      className={`px-6 py-2 rounded-xl font-bold text-surface w-full
           ${disabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}
           ${label === 'Buy' ? 'bg-bullish' : 'bg-bearish'}`}
     >

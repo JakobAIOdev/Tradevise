@@ -52,6 +52,8 @@ type PortfolioChartState = {
   latestKnownPrices: Map<string, number>;
 };
 
+type LeaderboardMetric = 'total' | 'seasonal';
+
 @Injectable()
 export class PortfolioService {
   constructor(
@@ -212,6 +214,85 @@ export class PortfolioService {
     };
   }
 
+  async getLeaderboard(userId: string, metricInput = 'total') {
+    const metric = this.parseLeaderboardMetric(metricInput);
+    await this.ensurePortfolio(userId);
+
+    const users = await this.prisma.user.findMany({
+      select: {
+        id: true,
+        username: true,
+        portfolios: {
+          select: {
+            cash: true,
+            createdAt: true,
+          },
+          take: 1,
+        },
+        holdings: {
+          select: {
+            symbol: true,
+            quantity: true,
+          },
+        },
+      },
+    });
+
+    const ranked = await Promise.all(
+      users
+        .filter((user) => user.portfolios.length > 0)
+        .map(async (user) => {
+          const portfolio = user.portfolios[0];
+          const totalValue = await this.calculateCurrentPortfolioValue(
+            portfolio.cash,
+            user.holdings,
+          );
+          const seasonGainPercent =
+            metric === 'seasonal'
+              ? await this.calculateMonthlyGainPercent({
+                  userId: user.id,
+                  currentTotalValue: totalValue,
+                  currentCash: this.toNumber(portfolio.cash),
+                  holdings: user.holdings,
+                  portfolioCreatedAt: portfolio.createdAt,
+                })
+              : null;
+
+          return {
+            userId: user.id,
+            username: user.username,
+            totalValue,
+            seasonGainPercent,
+          };
+        }),
+    );
+
+    const entries = ranked
+      .sort((left, right) => {
+        const leftValue =
+          metric === 'seasonal'
+            ? (left.seasonGainPercent ?? Number.NEGATIVE_INFINITY)
+            : left.totalValue;
+        const rightValue =
+          metric === 'seasonal'
+            ? (right.seasonGainPercent ?? Number.NEGATIVE_INFINITY)
+            : right.totalValue;
+
+        return rightValue - leftValue;
+      })
+      .map((entry, index) => ({
+        ...entry,
+        rank: index + 1,
+        isCurrentUser: entry.userId === userId,
+      }));
+
+    return {
+      metric,
+      seasonStart: this.getCurrentSeasonStart(),
+      entries,
+    };
+  }
+
   async buyStock(userId: string, dto: BuyStockDto) {
     const symbol = this.normalizeSymbol(dto.symbol);
     const quantity = this.toDecimal(dto.quantity);
@@ -352,6 +433,150 @@ export class PortfolioService {
     }
 
     return normalized;
+  }
+
+  private parseLeaderboardMetric(metricInput: string): LeaderboardMetric {
+    const metric = metricInput.trim().toLowerCase();
+
+    if (metric === 'seasonal') return 'seasonal';
+    if (metric === '' || metric === 'total') return 'total';
+
+    throw new BadRequestException(
+      'Invalid leaderboard metric. Allowed values: total, seasonal',
+    );
+  }
+
+  private async calculateCurrentPortfolioValue(
+    cash: Prisma.Decimal,
+    holdings: Array<{ symbol: string; quantity: Prisma.Decimal }>,
+  ) {
+    const holdingsValue = await this.calculateHoldingsValue(holdings);
+    return this.toNumber(cash) + holdingsValue;
+  }
+
+  private async calculateHoldingsValue(
+    holdings: Array<{ symbol: string; quantity: Prisma.Decimal }>,
+  ) {
+    const values = await Promise.all(
+      holdings.map(async (holding) => {
+        const currentPrice = await this.getDisplayPrice(holding.symbol);
+        return this.toNumber(holding.quantity) * currentPrice;
+      }),
+    );
+
+    return values.reduce((sum, value) => sum + value, 0);
+  }
+
+  private async calculateMonthlyGainPercent({
+    userId,
+    currentTotalValue,
+    currentCash,
+    holdings,
+    portfolioCreatedAt,
+  }: {
+    userId: string;
+    currentTotalValue: number;
+    currentCash: number;
+    holdings: Array<{ symbol: string; quantity: Prisma.Decimal }>;
+    portfolioCreatedAt: Date;
+  }) {
+    const seasonStart = this.getCurrentSeasonStart();
+    const baselineDate =
+      portfolioCreatedAt > seasonStart ? portfolioCreatedAt : seasonStart;
+    const transactions = await this.prisma.transaction.findMany({
+      where: {
+        userId,
+        createdAt: {
+          gte: baselineDate,
+        },
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+      select: {
+        symbol: true,
+        type: true,
+        quantity: true,
+        total: true,
+      },
+    });
+
+    let baselineCash = currentCash;
+    const baselineQuantities = new Map(
+      holdings.map((holding) => [
+        holding.symbol,
+        this.toNumber(holding.quantity),
+      ]),
+    );
+
+    for (const transaction of transactions) {
+      const quantity = this.toNumber(transaction.quantity);
+      const currentQuantity = baselineQuantities.get(transaction.symbol) ?? 0;
+
+      if (transaction.type === 'BUY') {
+        baselineCash += this.toNumber(transaction.total);
+        baselineQuantities.set(
+          transaction.symbol,
+          Math.max(currentQuantity - quantity, 0),
+        );
+      } else {
+        baselineCash -= this.toNumber(transaction.total);
+        baselineQuantities.set(transaction.symbol, currentQuantity + quantity);
+      }
+    }
+
+    const baselineHoldings = [...baselineQuantities.entries()]
+      .filter(([, quantity]) => quantity > 0)
+      .map(([symbol, quantity]) => ({ symbol, quantity }));
+    const baselineHoldingsValue = await this.calculateHistoricalHoldingsValue(
+      baselineHoldings,
+      baselineDate,
+    );
+    const baselineValue = baselineCash + baselineHoldingsValue;
+
+    if (baselineValue <= 0) return null;
+
+    return ((currentTotalValue - baselineValue) / baselineValue) * 100;
+  }
+
+  private async calculateHistoricalHoldingsValue(
+    holdings: Array<{ symbol: string; quantity: number }>,
+    date: Date,
+  ) {
+    const values = await Promise.all(
+      holdings.map(async (holding) => {
+        const price = await this.getHistoricalDisplayPrice(holding.symbol, date);
+        return holding.quantity * price;
+      }),
+    );
+
+    return values.reduce((sum, value) => sum + value, 0);
+  }
+
+  private async getHistoricalDisplayPrice(symbol: string, date: Date) {
+    const dailyPrice = await this.prisma.priceDaily.findFirst({
+      where: {
+        symbol,
+        date: {
+          lte: date,
+        },
+      },
+      orderBy: {
+        date: 'desc',
+      },
+      select: {
+        price: true,
+      },
+    });
+
+    if (dailyPrice) return this.toNumber(dailyPrice.price);
+
+    return this.getDisplayPrice(symbol);
+  }
+
+  private getCurrentSeasonStart() {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), 1);
   }
 
   private async ensurePortfolio(userId: string) {

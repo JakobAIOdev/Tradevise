@@ -23,6 +23,14 @@ export class PortfolioController {
     return this.portfolioService.getPortfolioChart(userId, range);
   }
 
+  @Get('leaderboard')
+  getLeaderboard(
+    @CurrentUser('sub') userId: string,
+    @Query('metric') metric = 'total',
+  ) {
+    return this.portfolioService.getLeaderboard(userId, metric);
+  }
+
   @Post('buy')
   buyStock(@CurrentUser('sub') userId: string, @Body() dto: BuyStockDto) {
     return this.portfolioService.buyStock(userId, dto);

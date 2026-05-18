@@ -1,6 +1,7 @@
 import { useQueries } from '@tanstack/react-query'
 import PageTitle from '../components/PageTitle'
 import HoldingsTable from '../components/portfolio/HoldingsTable'
+import PortfolioOverview from '../components/portfolio/PortfolioOverview'
 import type { PortfolioTableRow } from '../components/portfolio/TableColumns'
 import type { StockStatistics } from '../types'
 import { usePortfolio } from '../hooks/usePortfolio'
@@ -56,9 +57,15 @@ export default function PortfolioPage() {
   })
 
   return (
-    <>
+    <div className="flex flex-col gap-25">
       <PageTitle title="Portfolio" />
+      <PortfolioOverview
+        rows={rows}
+        cash={portfolio?.cash ?? 0}
+        todayChange={portfolio?.todayChange ?? 0}
+        todayChangePercent={portfolio?.todayChangePercent ?? 0}
+      />
       <HoldingsTable data={rows} />
-    </>
+    </div>
   )
 }

@@ -33,8 +33,9 @@ export function useHomePortfolio() {
     firstPoint > 0 &&
     lastPoint > 0
 
-  const rangeChange = hasRangePerformance ? lastPoint - firstPoint : todayChange
-  const rangeChangePercent = hasRangePerformance
+  const isTodayRange = range === 'intraday'
+  const rangeChange = isTodayRange || !hasRangePerformance ? todayChange : lastPoint - firstPoint
+  const rangeChangePercent = !isTodayRange && hasRangePerformance
     ? ((lastPoint - firstPoint) / firstPoint) * 100
     : todayChangePercent
   const rangeLabel = getRangeLabel(range)

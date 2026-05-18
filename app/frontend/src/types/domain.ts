@@ -58,3 +58,20 @@ export type Portfolio = {
   holdings: PortfolioHolding[]
   todayBaselineValue: number
 }
+
+export type LeaderboardMetric = 'total' | 'seasonal'
+
+export type LeaderboardEntry = {
+  userId: string
+  username: string
+  totalValue: number
+  seasonGainPercent: number | null
+  rank: number
+  isCurrentUser: boolean
+}
+
+export type Leaderboard = {
+  metric: LeaderboardMetric
+  seasonStart: string
+  entries: LeaderboardEntry[]
+}

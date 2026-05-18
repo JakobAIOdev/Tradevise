@@ -27,7 +27,7 @@ export default function StatCard({
   subTrend,
 }: StatCardProps) {
   return (
-    <div className="flex flex-col gap-10 bg-surface border border-border rounded-xl p-25 flex-1">
+    <div className="flex h-full min-h-40 flex-col gap-10 rounded-xl border border-border bg-surface p-25">
       <div className="flex items-center gap-8 text-muted">
         <Icon size={20} strokeWidth={1.5} />
         <span className="text-small">{label}</span>

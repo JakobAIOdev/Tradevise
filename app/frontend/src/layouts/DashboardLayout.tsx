@@ -46,7 +46,7 @@ export default function DashboardLayout() {
             setCollapsed((value) => !value)
           }}
         />
-        <main className="flex-1 overflow-y-auto pl-12.5 pt-40 md:p-40 transition-colors duration-200 ease-out mr-80">
+        <main className="flex-1 overflow-y-auto px-12 py-40 transition-colors duration-200 ease-out md:p-40 md:pr-80">
           <Outlet />
         </main>
       </div>

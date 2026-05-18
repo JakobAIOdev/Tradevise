@@ -10,7 +10,7 @@ export default function Topbar({ onToggle }: TopbarProps) {
   const { theme, toggle } = useTheme()
 
   return (
-    <div className="flex items-center justify-between w-full h-60 max-h-60 px-25 bg-surface border-b border-border transition-colors duration-200 ease-out">
+    <div className="flex h-60 max-h-60 w-full items-center justify-between border-b border-border bg-surface px-12 transition-colors duration-200 ease-out md:px-25">
       <button type="button" aria-label="Toggle navigation" onClick={onToggle}>
         <PanelLeft
           size={20}
@@ -19,8 +19,11 @@ export default function Topbar({ onToggle }: TopbarProps) {
         />
       </button>
 
-      <div className="flex flex-1 items-center justify-end gap-40 pr-80">
-        <SearchBar className="w-88 max-w-[50vw] flex-none" size="compact" />
+      <div className="flex flex-1 items-center justify-end gap-8 md:gap-40 md:pr-80">
+        <SearchBar
+          className="ml-8 w-52 max-w-[calc(100vw-8rem)] flex-none md:ml-0 md:w-88 md:max-w-[50vw]"
+          size="compact"
+        />
 
         <button
           onClick={toggle}

@@ -27,7 +27,7 @@ export default function HomePage() {
   return (
     <div className="flex flex-col gap-25">
       <PageTitle title="Home" />
-      <div className="flex gap-25">
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-25">
         <StatCard
           icon={TrendingUp}
           label={rangeLabel}

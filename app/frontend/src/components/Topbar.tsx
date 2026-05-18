@@ -10,8 +10,8 @@ export default function Topbar({ onToggle }: TopbarProps) {
   const { theme, toggle } = useTheme()
 
   return (
-    <div className="flex h-60 max-h-60 w-full items-center justify-between border-b border-border bg-surface pl-12 pr-12 transition-colors duration-200 ease-out md:pl-25 md:pr-80">
-      <button type="button" aria-label="Toggle navigation" onClick={onToggle}>
+    <div className="flex h-60 max-h-60 w-full items-center gap-6 border-b border-border bg-surface px-12 transition-colors duration-200 ease-out md:gap-25 md:pl-25 md:pr-80">
+      <button type="button" aria-label="Toggle navigation" onClick={onToggle} className="shrink-0">
         <PanelLeft
           size={20}
           strokeWidth={1.5}
@@ -19,15 +19,14 @@ export default function Topbar({ onToggle }: TopbarProps) {
         />
       </button>
 
-      <div className="flex flex-1 items-center justify-end gap-8 md:gap-40">
-        <SearchBar
-          className="ml-8 w-52 max-w-[calc(100vw-8rem)] flex-none md:ml-0 md:w-88 md:max-w-[50vw]"
-          size="compact"
-        />
+      <div className="ml-auto flex min-w-0 flex-1 items-center justify-end gap-6 md:gap-12">
+        <div className="min-w-[15rem] max-w-72 sm:max-w-80 md:max-w-88">
+          <SearchBar className="w-full min-w-0" size="compact" />
+        </div>
 
         <button
           onClick={toggle}
-          className="bg-surface border border-border rounded-xl p-10 cursor-pointer transition-colors duration-200 ease-out"
+          className="shrink-0 bg-surface border border-border rounded-xl p-8 cursor-pointer transition-colors duration-200 ease-out md:p-10"
         >
           {theme === 'dark' ? (
             <Moon

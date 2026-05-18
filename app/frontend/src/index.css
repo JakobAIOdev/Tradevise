@@ -80,3 +80,25 @@ body {
 .recharts-responsive-container * {
   outline: none;
 }
+
+.holdings-layout {
+  container-type: inline-size;
+}
+
+.holdings-mobile {
+  display: block;
+}
+
+.holdings-table {
+  display: none;
+}
+
+@container (min-width: 760px) {
+  .holdings-mobile {
+    display: none;
+  }
+
+  .holdings-table {
+    display: table;
+  }
+}

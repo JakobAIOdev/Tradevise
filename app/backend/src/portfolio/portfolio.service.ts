@@ -131,11 +131,11 @@ export class PortfolioService {
   ): Promise<PortfolioChartResponse> {
     const range = this.parsePortfolioChartRange(rangeInput);
     const portfolio = await this.ensurePortfolio(userId);
-    let { start, end, source } = this.getPortfolioChartWindow(range);
-
-    if (range === 'ALL') {
-      start = await this.resolveAllRangeStart(userId, portfolio.createdAt);
-    }
+    const { start, end, source } = this.getPortfolioChartWindow(range);
+    const resolvedStart =
+      range === 'ALL'
+        ? await this.resolveAllRangeStart(userId, portfolio.createdAt)
+        : start;
     const timelineEnd =
       source === 'intraday' ? this.toIntradayChartDate(end) : end;
 
@@ -163,7 +163,7 @@ export class PortfolioService {
 
     const priceHistoryBySymbol = await this.getPortfolioPriceHistory(
       symbols,
-      start,
+      resolvedStart,
       timelineEnd,
       source,
     );
@@ -178,7 +178,7 @@ export class PortfolioService {
       this.toNumber(portfolio.cash),
       normalizedTransactions,
     );
-    const rangeStartTimestamp = Math.floor(start.getTime() / 1000);
+    const rangeStartTimestamp = Math.floor(resolvedStart.getTime() / 1000);
     const rangeEndTimestamp = Math.floor(timelineEnd.getTime() / 1000);
     const state = this.seedPortfolioChartState({
       symbols,
@@ -200,7 +200,6 @@ export class PortfolioService {
     });
     const points = this.calculatePortfolioChartPoints({
       timeline,
-      normalizedTransactions,
       state,
       source,
       rangeStartTimestamp,
@@ -895,7 +894,6 @@ export class PortfolioService {
 
   private calculatePortfolioChartPoints({
     timeline,
-    normalizedTransactions,
     state,
     source,
     rangeStartTimestamp,
@@ -905,7 +903,6 @@ export class PortfolioService {
       priceEventsByTime: Map<number, Array<{ symbol: string; price: number }>>;
       transactionEventsByTime: Map<number, PortfolioChartTransaction[]>;
     };
-    normalizedTransactions: PortfolioChartTransaction[];
     state: PortfolioChartState;
     source: 'intraday' | 'daily';
     rangeStartTimestamp: number;

@@ -6,7 +6,7 @@ const NAV_ITEMS = [
   { to: '/portfolio', icon: Wallet, label: 'Portfolio' },
   { to: '/discover', icon: Search, label: 'Discover' },
   { to: '/ranking', icon: Trophy, label: 'Ranking' },
-  { to: '/groups', icon: Users, label: 'Groups', disabled: true },
+  { to: '/groups', icon: Users, label: 'Groups' },
 ]
 
 interface SidebarProps {
@@ -35,7 +35,7 @@ export default function Sidebar({ collapsed, mobileOpen, onNavigate }: SidebarPr
             key={item.to}
             {...item}
             collapsed={collapsed}
-            disabled={item.disabled ?? false}
+            disabled={false}
             onNavigate={onNavigate}
           />
         ))}

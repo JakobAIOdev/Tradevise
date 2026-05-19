@@ -75,3 +75,30 @@ export type Leaderboard = {
   seasonStart: string
   entries: LeaderboardEntry[]
 }
+
+export type GroupSummary = {
+  id: string
+  name: string
+  code: string
+  ownerId: string
+  createdAt: string
+  _count: {
+    members: number
+  }
+}
+
+export type GroupDetail = {
+  id: string
+  name: string
+  code: string
+  ownerId: string
+  createdAt: string
+  members: Array<{
+    role: 'OWNER' | 'MEMBER'
+    joinedAt: string
+    user: {
+      id: string
+      username: string
+    }
+  }>
+}

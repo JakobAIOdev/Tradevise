@@ -126,14 +126,15 @@ export class GroupsService {
 
     const members = await this.prisma.groupMember.findMany({
       where: { groupId },
-      select: { userId: true },
+      select: { userId: true, joinedAt: true },
     });
 
-    const userIds = members.map((member) => member.userId);
-
-    return this.portfolioService.getLeaderboardForUsers(
+    return this.portfolioService.getLeaderboardForUsersSince(
       userId,
-      userIds,
+      members.map((member) => ({
+        userId: member.userId,
+        baselineDate: member.joinedAt,
+      })),
       metric,
     );
   }

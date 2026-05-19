@@ -16,9 +16,11 @@ model User {
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
-  holdings     PortfolioHolding[]
-  transactions Transaction[]
-  portfolios   Portfolio[]
+  holdings         PortfolioHolding[]
+  transactions     Transaction[]
+  portfolios       Portfolio[]
+  ownedGroups      Group[]            @relation("GroupOwner")
+  groupMemberships GroupMember[]      @relation("GroupMemberUser")
 }
 
 model PriceIntraday {
@@ -105,4 +107,33 @@ model Portfolio {
   updatedAt DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Group {
+  id        String   @id @default(uuid())
+  name      String
+  code      String   @unique
+  ownerId   String
+  createdAt DateTime @default(now())
+
+  owner   User          @relation("GroupOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  members GroupMember[]
+}
+
+model GroupMember {
+  id       String    @id @default(uuid())
+  groupId  String
+  userId   String
+  role     GroupRole @default(MEMBER)
+  joinedAt DateTime  @default(now())
+
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user  User  @relation("GroupMemberUser", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, userId])
+}
+
+enum GroupRole {
+  OWNER
+  MEMBER
 }

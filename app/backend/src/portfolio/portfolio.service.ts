@@ -214,10 +214,29 @@ export class PortfolioService {
   }
 
   async getLeaderboard(userId: string, metricInput = 'total') {
+    return this.buildLeaderboard(userId, metricInput);
+  }
+
+  async getLeaderboardForUsers(
+    userId: string,
+    userIds: string[],
+    metricInput = 'total',
+  ) {
+    return this.buildLeaderboard(userId, metricInput, {
+      id: { in: userIds },
+    });
+  }
+
+  private async buildLeaderboard(
+    userId: string,
+    metricInput: string,
+    userWhere?: Prisma.UserWhereInput,
+  ) {
     const metric = this.parseLeaderboardMetric(metricInput);
     await this.ensurePortfolio(userId);
 
     const users = await this.prisma.user.findMany({
+      where: userWhere,
       select: {
         id: true,
         username: true,
@@ -242,10 +261,12 @@ export class PortfolioService {
         .filter((user) => user.portfolios.length > 0)
         .map(async (user) => {
           const portfolio = user.portfolios[0];
+
           const totalValue = await this.calculateCurrentPortfolioValue(
             portfolio.cash,
             user.holdings,
           );
+
           const seasonGainPercent =
             metric === 'seasonal'
               ? await this.calculateMonthlyGainPercent({
@@ -272,6 +293,7 @@ export class PortfolioService {
           metric === 'seasonal'
             ? (left.seasonGainPercent ?? Number.NEGATIVE_INFINITY)
             : left.totalValue;
+
         const rightValue =
           metric === 'seasonal'
             ? (right.seasonGainPercent ?? Number.NEGATIVE_INFINITY)
@@ -544,7 +566,10 @@ export class PortfolioService {
   ) {
     const values = await Promise.all(
       holdings.map(async (holding) => {
-        const price = await this.getHistoricalDisplayPrice(holding.symbol, date);
+        const price = await this.getHistoricalDisplayPrice(
+          holding.symbol,
+          date,
+        );
         return holding.quantity * price;
       }),
     );

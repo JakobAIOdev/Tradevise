@@ -6,6 +6,7 @@ import { PrismaModule } from './prisma/prisma.module.js';
 import { StocksModule } from './stocks/stocks.module.js';
 import { RedisModule } from './redis/redis.module.js';
 import { PortfolioModule } from './portfolio/portfolio.module.js';
+import { GroupsModule } from './groups/groups.module.js';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { PortfolioModule } from './portfolio/portfolio.module.js';
     RedisModule,
     StocksModule,
     PortfolioModule,
+    GroupsModule,
   ],
 })
 export class AppModule {}

@@ -46,6 +46,7 @@ function App() {
                 <Route path="/detail/:ticker" element={<StockDetailPage />} />
                 <Route path="/ranking" element={<RankedPage />} />
                 <Route path="/groups" element={<GroupPage />} />
+                <Route path="/groups/:groupId" element={<GroupPage />} />
               </Route>
             </Routes>
           </BrowserRouter>

@@ -54,6 +54,11 @@ type PortfolioChartState = {
 
 type LeaderboardMetric = 'total' | 'seasonal';
 
+type LeaderboardBaseline = {
+  userId: string;
+  baselineDate: Date;
+};
+
 @Injectable()
 export class PortfolioService {
   constructor(
@@ -214,10 +219,50 @@ export class PortfolioService {
   }
 
   async getLeaderboard(userId: string, metricInput = 'total') {
+    return this.buildLeaderboard(userId, metricInput);
+  }
+
+  async getLeaderboardForUsers(
+    userId: string,
+    userIds: string[],
+    metricInput = 'total',
+  ) {
+    return this.buildLeaderboard(userId, metricInput, {
+      id: { in: userIds },
+    });
+  }
+
+  async getLeaderboardForUsersSince(
+    userId: string,
+    baselines: LeaderboardBaseline[],
+    metricInput = 'total',
+  ) {
+    const userIds = baselines.map((baseline) => baseline.userId);
+    const baselineDatesByUserId = new Map(
+      baselines.map((baseline) => [baseline.userId, baseline.baselineDate]),
+    );
+
+    return this.buildLeaderboard(
+      userId,
+      metricInput,
+      {
+        id: { in: userIds },
+      },
+      baselineDatesByUserId,
+    );
+  }
+
+  private async buildLeaderboard(
+    userId: string,
+    metricInput: string,
+    userWhere?: Prisma.UserWhereInput,
+    baselineDatesByUserId?: Map<string, Date>,
+  ) {
     const metric = this.parseLeaderboardMetric(metricInput);
     await this.ensurePortfolio(userId);
 
     const users = await this.prisma.user.findMany({
+      where: userWhere,
       select: {
         id: true,
         username: true,
@@ -242,18 +287,23 @@ export class PortfolioService {
         .filter((user) => user.portfolios.length > 0)
         .map(async (user) => {
           const portfolio = user.portfolios[0];
+
           const totalValue = await this.calculateCurrentPortfolioValue(
             portfolio.cash,
             user.holdings,
           );
+
           const seasonGainPercent =
             metric === 'seasonal'
-              ? await this.calculateMonthlyGainPercent({
+              ? await this.calculateGainPercentSinceDate({
                   userId: user.id,
                   currentTotalValue: totalValue,
                   currentCash: this.toNumber(portfolio.cash),
                   holdings: user.holdings,
                   portfolioCreatedAt: portfolio.createdAt,
+                  baselineDate:
+                    baselineDatesByUserId?.get(user.id) ??
+                    this.getCurrentSeasonStart(),
                 })
               : null;
 
@@ -272,6 +322,7 @@ export class PortfolioService {
           metric === 'seasonal'
             ? (left.seasonGainPercent ?? Number.NEGATIVE_INFINITY)
             : left.totalValue;
+
         const rightValue =
           metric === 'seasonal'
             ? (right.seasonGainPercent ?? Number.NEGATIVE_INFINITY)
@@ -466,27 +517,28 @@ export class PortfolioService {
     return values.reduce((sum, value) => sum + value, 0);
   }
 
-  private async calculateMonthlyGainPercent({
+  private async calculateGainPercentSinceDate({
     userId,
     currentTotalValue,
     currentCash,
     holdings,
     portfolioCreatedAt,
+    baselineDate,
   }: {
     userId: string;
     currentTotalValue: number;
     currentCash: number;
     holdings: Array<{ symbol: string; quantity: Prisma.Decimal }>;
     portfolioCreatedAt: Date;
+    baselineDate: Date;
   }) {
-    const seasonStart = this.getCurrentSeasonStart();
-    const baselineDate =
-      portfolioCreatedAt > seasonStart ? portfolioCreatedAt : seasonStart;
+    const effectiveBaselineDate =
+      portfolioCreatedAt > baselineDate ? portfolioCreatedAt : baselineDate;
     const transactions = await this.prisma.transaction.findMany({
       where: {
         userId,
         createdAt: {
-          gte: baselineDate,
+          gte: effectiveBaselineDate,
         },
       },
       orderBy: {
@@ -529,7 +581,7 @@ export class PortfolioService {
       .map(([symbol, quantity]) => ({ symbol, quantity }));
     const baselineHoldingsValue = await this.calculateHistoricalHoldingsValue(
       baselineHoldings,
-      baselineDate,
+      effectiveBaselineDate,
     );
     const baselineValue = baselineCash + baselineHoldingsValue;
 
@@ -544,7 +596,10 @@ export class PortfolioService {
   ) {
     const values = await Promise.all(
       holdings.map(async (holding) => {
-        const price = await this.getHistoricalDisplayPrice(holding.symbol, date);
+        const price = await this.getHistoricalDisplayPrice(
+          holding.symbol,
+          date,
+        );
         return holding.quantity * price;
       }),
     );

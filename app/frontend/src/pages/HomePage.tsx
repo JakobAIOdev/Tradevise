@@ -64,7 +64,6 @@ export default function HomePage() {
           range={range}
           onRangeChange={setRange}
           data={portfolioChart}
-          title="Portfolio Performance"
         />
       </div>
 

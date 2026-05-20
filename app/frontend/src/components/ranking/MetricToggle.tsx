@@ -1,4 +1,5 @@
 import type { LeaderboardMetric } from '../../types'
+import Button from '../Button'
 
 type MetricToggleProps = {
   metric: LeaderboardMetric
@@ -8,26 +9,26 @@ type MetricToggleProps = {
 export default function MetricToggle({ metric, onMetricChange }: MetricToggleProps) {
   return (
     <div className="mx-auto grid w-full max-w-222 grid-cols-2 gap-1.5 rounded-[20px] bg-surface-hover p-1.5">
-      <button
-        type="button"
+      <Button
+        variant={metric === 'total' ? 'surface' : 'ghost'}
+        size="none"
         onClick={() => onMetricChange('total')}
-        className={`flex cursor-pointer items-center justify-center rounded-[14px] py-3 text-sm text-body transition-colors ${
-          metric === 'total' ? 'bg-surface font-bold text-text' : 'text-muted hover:bg-surface/60'
+        className={`rounded-[14px] py-3 text-sm text-body ${
+          metric === 'total' ? 'font-bold' : 'font-normal text-muted hover:bg-surface/60'
         }`}
       >
         Total Value
-      </button>
-      <button
-        type="button"
+      </Button>
+      <Button
+        variant={metric === 'seasonal' ? 'surface' : 'ghost'}
+        size="none"
         onClick={() => onMetricChange('seasonal')}
-        className={`flex cursor-pointer items-center justify-center rounded-[14px] py-3 text-sm text-body transition-colors ${
-          metric === 'seasonal'
-            ? 'bg-surface font-bold text-text'
-            : 'text-muted hover:bg-surface/60'
+        className={`rounded-[14px] py-3 text-sm text-body ${
+          metric === 'seasonal' ? 'font-bold' : 'font-normal text-muted hover:bg-surface/60'
         }`}
       >
         Season (% Gain)
-      </button>
+      </Button>
     </div>
   )
 }

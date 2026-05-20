@@ -1,4 +1,5 @@
 import type { ChartRange } from '../../types/chart'
+import Button from '../Button'
 
 interface ChartFilterProps {
   label: string
@@ -13,12 +14,14 @@ const ChartFilter = ({ label, value, isActive, setActive }: ChartFilterProps) =>
   }
 
   return (
-    <button
-      className={`px-1 py-0.5 text-small rounded-sm ${isActive ? 'bg-text text-surface' : 'text-text'}`}
+    <Button
+      variant={isActive ? 'primary' : 'ghost'}
+      size="none"
+      className="rounded-sm px-1 py-0.5 text-small font-normal"
       onClick={handleClick}
     >
       {label}
-    </button>
+    </Button>
   )
 }
 

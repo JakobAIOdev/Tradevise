@@ -1,4 +1,5 @@
 import { Star } from 'lucide-react'
+import Button from '../Button'
 
 type FavoriteButtonProps = {
   isFavorite: boolean
@@ -12,18 +13,19 @@ export default function FavoriteButton({
   onToggle,
 }: FavoriteButtonProps) {
   return (
-    <button
-      type="button"
+    <Button
+      variant="ghost"
+      size="none"
       aria-label={isFavorite ? 'Remove from watchlist' : 'Add to watchlist'}
       aria-pressed={isFavorite}
       disabled={isPending}
-      className="rounded-full p-2 text-muted transition-colors hover:text-text disabled:cursor-wait disabled:opacity-60"
+      className="rounded-full p-2 text-muted hover:text-text disabled:cursor-wait"
       onClick={onToggle}
     >
       <Star
         size={25}
         className={isFavorite ? 'fill-[#EECD15] stroke-[#EECD15]' : 'fill-surface stroke-current'}
       />
-    </button>
+    </Button>
   )
 }

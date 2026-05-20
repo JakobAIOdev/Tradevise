@@ -3,6 +3,7 @@ import { useState, type FormEvent } from 'react'
 import { useCreateGroup, useJoinGroup } from '../../hooks/useGroups'
 import { useToast } from '../../contexts/ToastContext'
 import Modal from '../modal/Modal'
+import Button from '../Button'
 
 type GroupModalMode = 'create' | 'join'
 
@@ -58,10 +59,7 @@ export default function NewGroupModal({ isOpen, onClose, onGroupSelected }: NewG
     <Modal isOpen={isOpen} onClose={onClose}>
       <div className="flex flex-col gap-40">
         <NewGroupModalHeader onClose={onClose} />
-        <GroupModeToggle
-          mode={mode}
-          onChange={setMode}
-        />
+        <GroupModeToggle mode={mode} onChange={setMode} />
 
         <form className="flex flex-col gap-40" onSubmit={handleSubmit}>
           {mode === 'create' ? (
@@ -70,13 +68,9 @@ export default function NewGroupModal({ isOpen, onClose, onGroupSelected }: NewG
             <GroupCodeField value={code} onChange={setCode} />
           )}
 
-          <button
-            type="submit"
-            disabled={isPending}
-            className="flex items-center justify-center rounded-lg bg-text px-25 py-3 font-bold text-surface disabled:cursor-not-allowed disabled:opacity-60 hover:opacity-90 hover:cursor-pointer"
-          >
+          <Button type="submit" disabled={isPending}>
             {isPending ? 'Saving...' : mode === 'create' ? 'Create group' : 'Join group'}
-          </button>
+          </Button>
         </form>
       </div>
     </Modal>
@@ -90,14 +84,9 @@ function NewGroupModalHeader({ onClose }: { onClose: () => void }) {
         <h2 className="text-h3 font-medium text-text">New Group</h2>
         <p className="mt-4 text-small text-muted">Create a group or join one by code.</p>
       </div>
-      <button
-        type="button"
-        onClick={onClose}
-        className="rounded-lg border border-border p-2 text-text transition-colors hover:cursor-pointer hover:bg-surface-hover"
-        aria-label="Close"
-      >
+      <Button variant="secondary" size="icon" onClick={onClose} aria-label="Close">
         <X size={18} strokeWidth={1.5} />
-      </button>
+      </Button>
     </div>
   )
 }
@@ -112,18 +101,17 @@ function GroupModeToggle({
   return (
     <div className="grid grid-cols-2 gap-1.5 rounded-[20px] bg-surface-hover p-1.5">
       {GROUP_MODAL_MODES.map((option) => (
-        <button
+        <Button
           key={option.value}
-          type="button"
+          variant={mode === option.value ? 'surface' : 'ghost'}
+          size="none"
           onClick={() => onChange(option.value)}
-          className={`rounded-[14px] py-3 text-body transition-colors hover:cursor-pointer ${
-            mode === option.value
-              ? 'bg-surface font-bold text-text'
-              : 'text-muted hover:bg-surface/60'
+          className={`rounded-[14px] py-3 text-body ${
+            mode === option.value ? 'font-bold' : 'font-normal text-muted hover:bg-surface/60'
           }`}
         >
           {option.label}
-        </button>
+        </Button>
       ))}
     </div>
   )

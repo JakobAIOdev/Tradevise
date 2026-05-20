@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useStockSearch } from '../../hooks/useStockSearch'
 import type { StockSuggestion } from '../../types'
 import { LoaderCircle, Search, X } from 'lucide-react'
+import Button from '../Button'
 
 type SearchBarProps = {
   className?: string
@@ -141,17 +142,18 @@ export function SearchBar({ className = '', size = 'default' }: SearchBarProps) 
               className="animate-spin text-muted [animation-duration:900ms] motion-reduce:animate-none"
             />
           ) : input.length > 0 ? (
-            <button
-              type="button"
+            <Button
+              variant="ghost"
+              size="none"
               onClick={() => {
                 setInput('')
                 setIsOpen(false)
                 setActiveIndex(-1)
               }}
-              className={`flex cursor-pointer items-center justify-center text-muted transition-colors duration-200 hover:text-text ${isCompact ? 'h-4 w-4' : 'h-5 w-5'}`}
+              className={`text-muted hover:bg-transparent hover:text-text ${isCompact ? 'h-4 w-4' : 'h-5 w-5'}`}
             >
               <X size={isCompact ? 16 : 20} strokeWidth={1.5} aria-hidden="true" />
-            </button>
+            </Button>
           ) : null}
         </div>
       </div>

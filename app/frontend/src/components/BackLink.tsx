@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import { ChevronLeft } from 'lucide-react'
+import Button from './Button'
 
 export default function BackLink() {
   const navigate = useNavigate()
@@ -9,9 +10,9 @@ export default function BackLink() {
   }
 
   return (
-    <button onClick={goBack} className="flex items-center cursor-pointer gap-1">
+    <Button variant="ghost" size="none" onClick={goBack} className="gap-1 hover:bg-transparent">
       <ChevronLeft size={20} strokeWidth={1.5} className="text-muted" />
       <span className="text-muted text-body ">Back</span>
-    </button>
+    </Button>
   )
 }

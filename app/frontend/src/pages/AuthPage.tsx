@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { useLogin } from '../hooks/useLogin'
 import { useRegister } from '../hooks/useRegister'
 import { useAuthStore } from '../stores/authStore'
+import Button from '../components/Button'
 
 type AuthMode = 'login' | 'register'
 
@@ -55,12 +56,22 @@ export default function AuthPage() {
     <div className="flex min-h-screen items-center justify-center px-18 py-32">
       <div className="w-full max-w-sm">
         <div className="mb-15 flex gap-10">
-          <button type="button" onClick={() => setMode('login')} className="px-15 py-10">
+          <Button
+            variant={mode === 'login' ? 'primary' : 'ghost'}
+            size="none"
+            onClick={() => setMode('login')}
+            className="rounded-lg px-15 py-10"
+          >
             Login
-          </button>
-          <button type="button" onClick={() => setMode('register')} className="px-15 py-10">
+          </Button>
+          <Button
+            variant={mode === 'register' ? 'primary' : 'ghost'}
+            size="none"
+            onClick={() => setMode('register')}
+            className="rounded-lg px-15 py-10"
+          >
             Register
-          </button>
+          </Button>
         </div>
 
         <form className="space-y-15" onSubmit={handleSubmit}>
@@ -110,13 +121,9 @@ export default function AuthPage() {
 
           {errorMessage && <p className="text-small text-error">{errorMessage}</p>}
 
-          <button
-            type="submit"
-            disabled={isPending}
-            className="w-full px-15 py-12 disabled:opacity-60"
-          >
+          <Button type="submit" disabled={isPending} fullWidth className="px-15 py-12">
             {isPending ? 'Loading...' : mode === 'login' ? 'Sign in' : 'Create account'}
-          </button>
+          </Button>
         </form>
       </div>
     </div>

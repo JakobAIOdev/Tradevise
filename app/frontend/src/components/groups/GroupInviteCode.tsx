@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import Button from '../Button'
 
 type GroupInviteCodeProps = {
   code: string
@@ -20,13 +21,14 @@ export default function GroupInviteCode({ code }: GroupInviteCodeProps) {
         </p>
         <p className="mt-1 text-body font-bold leading-none tracking-widest text-text">{code}</p>
       </div>
-      <button
-        type="button"
+      <Button
+        variant="ghost"
+        size="none"
         onClick={copyCode}
         className="px-3 py-3 text-small font-bold text-text transition-colors hover:cursor-pointer hover:bg-surface-hover"
       >
         {hasCopiedCode ? 'Copied' : 'Copy'}
-      </button>
+      </Button>
     </div>
   )
 }

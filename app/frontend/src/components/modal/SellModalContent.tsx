@@ -4,6 +4,7 @@ import { usePortfolio } from '../../hooks/usePortfolio'
 import { useTradeStock } from '../../hooks/useTradeStock'
 import { formatInputNumber, formatMoney, formatShares } from '../../utils/format'
 import { useToast } from '../../contexts/ToastContext'
+import Button from '../Button'
 
 type SellMode = 'amount' | 'shares' | 'percentage'
 type SellPercentage = 0.25 | 0.5 | 1
@@ -172,46 +173,36 @@ export default function SellModalContent({
           <h2 className="text-h2 text-text">Sell {stockLabel}</h2>
           <p className="mt-1 text-small text-muted">{formatShares(ownedShares)} shares held</p>
         </div>
-        <button
-          type="button"
-          onClick={onClose}
-          className="rounded-lg border border-border p-2 text-text hover:bg-surface-hover hover:cursor-pointer"
-          aria-label="Close sell modal"
-        >
+        <Button variant="secondary" size="icon" onClick={onClose} aria-label="Close sell modal">
           <X size={20} strokeWidth={1.5} />
-        </button>
+        </Button>
       </div>
 
       <div className="flex flex-wrap gap-3 pt-7.5 pb-40">
-        <button
-          type="button"
+        <Button
+          variant={mode === 'amount' ? 'primary' : 'secondary'}
+          size="none"
+          className="rounded-[100px] px-7 py-3 text-body font-normal"
           onClick={() => handleModeChange('amount')}
-          className={`rounded-[100px] px-7 py-3 text-body hover:cursor-pointer ${
-            mode === 'amount' ? 'bg-text text-surface' : 'border border-border bg-surface text-text'
-          }`}
         >
           Amount
-        </button>
-        <button
-          type="button"
+        </Button>
+        <Button
+          variant={mode === 'shares' ? 'primary' : 'secondary'}
+          size="none"
+          className="rounded-[100px] px-7 py-3 text-body font-normal"
           onClick={() => handleModeChange('shares')}
-          className={`rounded-[100px] px-7 py-3 text-body hover:cursor-pointer ${
-            mode === 'shares' ? 'bg-text text-surface' : 'border border-border bg-surface text-text'
-          }`}
         >
           Shares
-        </button>
-        <button
-          type="button"
+        </Button>
+        <Button
+          variant={mode === 'percentage' ? 'primary' : 'secondary'}
+          size="none"
+          className="rounded-[100px] px-7 py-3 text-body font-normal"
           onClick={() => handleModeChange('percentage')}
-          className={`rounded-[100px] px-7 py-3 text-body hover:cursor-pointer ${
-            mode === 'percentage'
-              ? 'bg-text text-surface'
-              : 'border border-border bg-surface text-text'
-          }`}
         >
           Percentage
-        </button>
+        </Button>
       </div>
 
       {mode === 'percentage' ? (
@@ -219,18 +210,15 @@ export default function SellModalContent({
           <label className="block text-body text-text">Percentage</label>
           <div className="grid grid-cols-4 gap-3">
             {PERCENTAGE_OPTIONS.map((option) => (
-              <button
+              <Button
                 key={option.label}
-                type="button"
+                variant={percentage === option.value ? 'primary' : 'secondary'}
+                size="none"
                 onClick={() => handlePercentageChange(option.value)}
-                className={`h-13 rounded-lg border px-4 text-body hover:cursor-pointer ${
-                  percentage === option.value
-                    ? 'border-text bg-text text-surface'
-                    : 'border-border bg-surface text-text'
-                }`}
+                className="h-13 px-4 text-body font-normal"
               >
                 {option.label}
-              </button>
+              </Button>
             ))}
             {percentage === 'custom' ? (
               <input
@@ -243,13 +231,14 @@ export default function SellModalContent({
                 aria-label="Custom sell percentage"
               />
             ) : (
-              <button
-                type="button"
+              <Button
+                variant="secondary"
+                size="none"
                 onClick={handleCustomPercentage}
-                className="h-13 rounded-lg border border-border bg-surface px-4 text-body text-text hover:cursor-pointer"
+                className="h-13 px-4 text-body font-normal"
               >
                 Custom
-              </button>
+              </Button>
             )}
           </div>
           <div className="space-y-1">
@@ -292,21 +281,13 @@ export default function SellModalContent({
       {error && <p className="text-small text-bearish">{error}</p>}
 
       <div className="flex justify-end pt-15">
-        <button
-          type="button"
+        <Button
           onClick={handleSubmit}
           disabled={!canSubmit}
-          className="flex items-center gap-2 rounded-lg bg-text px-25 py-3 font-bold text-surface disabled:cursor-not-allowed disabled:opacity-60 hover:cursor-pointer"
+          trailing={!sellStock.isPending && <ChevronRight size={18} strokeWidth={2} />}
         >
-          {sellStock.isPending ? (
-            'Selling...'
-          ) : (
-            <>
-              Sell
-              <ChevronRight size={18} strokeWidth={2} />
-            </>
-          )}
-        </button>
+          {sellStock.isPending ? 'Selling...' : 'Sell'}
+        </Button>
       </div>
     </div>
   )

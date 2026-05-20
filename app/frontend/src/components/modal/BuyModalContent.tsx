@@ -4,6 +4,7 @@ import { usePortfolio } from '../../hooks/usePortfolio'
 import { useTradeStock } from '../../hooks/useTradeStock'
 import { formatInputNumber, formatMoney, formatShares } from '../../utils/format'
 import { useToast } from '../../contexts/ToastContext'
+import Button from '../Button'
 
 type BuyMode = 'amount' | 'shares'
 
@@ -122,35 +123,28 @@ export default function BuyModalContent({
           <h2 className="text-h2 text-text">Invest in {stockLabel}</h2>
           <p className="mt-1 text-small text-muted">{formatMoney(availableCash)} available</p>
         </div>
-        <button
-          type="button"
-          onClick={onClose}
-          className="rounded-lg border border-border p-2 text-text hover:bg-surface-hover hover:cursor-pointer"
-          aria-label="Close buy modal"
-        >
+        <Button variant="secondary" size="icon" onClick={onClose} aria-label="Close buy modal">
           <X size={20} strokeWidth={1.5} />
-        </button>
+        </Button>
       </div>
 
       <div className="flex gap-3 pt-7.5 pb-40">
-        <button
-          type="button"
+        <Button
+          variant={mode === 'amount' ? 'primary' : 'secondary'}
+          size="none"
+          className="rounded-[100px] px-7 py-3 text-body font-normal"
           onClick={() => handleModeChange('amount')}
-          className={`rounded-[100px] px-7 py-3 text-body hover:cursor-pointer ${
-            mode === 'amount' ? 'bg-text text-surface' : 'border border-border bg-surface text-text'
-          }`}
         >
           Amount
-        </button>
-        <button
-          type="button"
+        </Button>
+        <Button
+          variant={mode === 'shares' ? 'primary' : 'secondary'}
+          size="none"
+          className="rounded-[100px] px-7 py-3 text-body font-normal"
           onClick={() => handleModeChange('shares')}
-          className={`rounded-[100px] px-7 py-3 text-body hover:cursor-pointer ${
-            mode === 'shares' ? 'bg-text text-surface' : 'border border-border bg-surface text-text'
-          }`}
         >
           Shares
-        </button>
+        </Button>
       </div>
 
       <div className="min-h-38 space-y-3">
@@ -184,21 +178,13 @@ export default function BuyModalContent({
       {error && <p className="text-small text-bearish">{error}</p>}
 
       <div className="flex justify-end pt-15">
-        <button
-          type="button"
+        <Button
           onClick={handleSubmit}
           disabled={!canSubmit}
-          className="flex items-center gap-2 rounded-lg bg-text px-25 py-3 font-bold text-surface disabled:cursor-not-allowed disabled:opacity-60 hover:cursor-pointer"
+          trailing={!buyStock.isPending && <ChevronRight size={18} strokeWidth={2} />}
         >
-          {buyStock.isPending ? (
-            'Buying...'
-          ) : (
-            <>
-              Buy
-              <ChevronRight size={18} strokeWidth={2} />
-            </>
-          )}
-        </button>
+          {buyStock.isPending ? 'Buying...' : 'Buy'}
+        </Button>
       </div>
     </div>
   )

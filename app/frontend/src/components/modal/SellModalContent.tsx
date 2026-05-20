@@ -204,7 +204,7 @@ export default function SellModalContent({
                 variant={percentage === option.value ? 'primary' : 'secondary'}
                 size="none"
                 onClick={() => handlePercentageChange(option.value)}
-                className="h-13 px-4 text-body font-normal"
+                className="h-13 rounded-lg px-4 text-body font-normal"
               >
                 {option.label}
               </Button>
@@ -227,7 +227,7 @@ export default function SellModalContent({
                 variant="secondary"
                 size="none"
                 onClick={handleCustomPercentage}
-                className="h-13 px-4 text-body font-normal"
+                className="h-13 rounded-lg px-4 text-body font-normal"
               >
                 Custom
               </Button>

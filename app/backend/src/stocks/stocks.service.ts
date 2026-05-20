@@ -246,6 +246,49 @@ export class StocksService {
     );
   }
 
+  async getWatchlistStocks(userId: string): Promise<DiscoverStock[]> {
+    const items = await this.prisma.watchlistItem.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    return Promise.all(items.map((item) => this.mapStockBySymbol(item.symbol)));
+  }
+
+  async addToWatchlist(userId: string, symbol: string): Promise<DiscoverStock> {
+    const normalizedSymbol = this.parseSupportedLangSchwarzSymbol(symbol);
+
+    await this.prisma.watchlistItem.upsert({
+      where: {
+        userId_symbol: {
+          userId,
+          symbol: normalizedSymbol,
+        },
+      },
+      create: {
+        userId,
+        symbol: normalizedSymbol,
+      },
+      update: {},
+    });
+    await this.redisService.requestImmediateLivePrice(normalizedSymbol);
+
+    return this.mapStockBySymbol(normalizedSymbol);
+  }
+
+  async removeFromWatchlist(userId: string, symbol: string) {
+    const normalizedSymbol = this.parseSupportedLangSchwarzSymbol(symbol);
+
+    await this.prisma.watchlistItem.deleteMany({
+      where: {
+        userId,
+        symbol: normalizedSymbol,
+      },
+    });
+
+    return { symbol: normalizedSymbol };
+  }
+
   streamLivePrice(symbol: string): Observable<MessageEvent> {
     const normalizedSymbol = this.parseSupportedLangSchwarzSymbol(symbol);
 
@@ -318,20 +361,24 @@ export class StocksService {
     await this.redisService.requestImmediateLivePrice(normalizedSymbol);
 
     if (range === 'intraday') {
-      const rows = await this.prisma.$queryRaw<ChartRow[]>(Prisma.sql`
+      const [rows, previousClose] = await Promise.all([
+        this.prisma.$queryRaw<ChartRow[]>(Prisma.sql`
         SELECT
           EXTRACT(EPOCH FROM time)::bigint AS time,
           price::double precision AS price
         FROM prices_intraday
         ${this.getCurrentLangSchwarzDayFilterSql(normalizedSymbol)}
         ORDER BY time ASC
-      `);
+      `),
+        this.getPreviousClose(normalizedSymbol),
+      ]);
+      const points = rows.map((row) => this.mapChartRow(row));
 
       return {
         symbol: normalizedSymbol,
         range,
         source: 'intraday',
-        points: rows.map((row) => this.mapChartRow(row)),
+        points: this.prependIntradayBaseline(points, previousClose),
       };
     }
 
@@ -462,6 +509,25 @@ export class StocksService {
     };
   }
 
+  private async mapStockBySymbol(symbol: string): Promise<DiscoverStock> {
+    const definition = DISCOVER_STOCKS.find((stock) => stock.ticker === symbol);
+    const [latest, meta] = await Promise.all([
+      this.redisService.getJson<LivePriceEvent>(`stocklatest:${symbol}`),
+      definition
+        ? Promise.resolve(null)
+        : this.prisma.stockMeta.findUnique({ where: { symbol } }),
+    ]);
+
+    return this.mapDiscoverStock(
+      {
+        name: definition?.name ?? meta?.name ?? symbol,
+        ticker: symbol,
+        logo: definition?.logo ?? buildFallbackLogoUrl(symbol),
+      },
+      latest,
+    );
+  }
+
   private createLiveMessageHandler(
     symbol: string,
     subscriber: Subscriber<MessageEvent>,
@@ -585,6 +651,53 @@ export class StocksService {
     return typeof latest?.price === 'number' && latest.price > 0
       ? latest.price
       : null;
+  }
+
+  private async getPreviousClose(symbol: string) {
+    const latest = await this.redisService.getJson<LivePriceEvent>(
+      `stocklatest:${symbol}`,
+    );
+
+    if (typeof latest?.previousClose === 'number' && latest.previousClose > 0) {
+      return latest.previousClose;
+    }
+
+    const meta = await this.prisma.stockMeta.findUnique({
+      where: { symbol },
+      select: { previousClose: true },
+    });
+
+    return meta?.previousClose?.toNumber() ?? null;
+  }
+
+  private prependIntradayBaseline(
+    points: GraphPoint[],
+    previousClose: number | null,
+  ) {
+    if (points.length === 0 || previousClose == null || previousClose <= 0) {
+      return points;
+    }
+
+    const firstPoint = points[0];
+    const firstPointDate = new Date(firstPoint.time * 1000);
+    const dayStart =
+      Date.UTC(
+        firstPointDate.getUTCFullYear(),
+        firstPointDate.getUTCMonth(),
+        firstPointDate.getUTCDate(),
+        7,
+        0,
+        0,
+        0,
+      ) / 1000;
+
+    return [
+      {
+        time: Math.min(dayStart, firstPoint.time - 1),
+        price: previousClose,
+      },
+      ...points,
+    ];
   }
 
   private applyLatestPriceToLastPoint(

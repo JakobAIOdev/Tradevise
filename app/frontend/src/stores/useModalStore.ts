@@ -4,6 +4,7 @@ type ModalType = 'buy' | 'sell'
 
 interface ModalPayload {
   symbol?: string
+  name?: string
   price?: number
   portfolioId?: string
 }

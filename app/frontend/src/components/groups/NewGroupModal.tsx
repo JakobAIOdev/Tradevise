@@ -1,6 +1,7 @@
 import { X } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { useCreateGroup, useJoinGroup } from '../../hooks/useGroups'
+import { useToast } from '../../contexts/ToastContext'
 import Modal from '../modal/Modal'
 
 type GroupModalMode = 'create' | 'join'
@@ -16,18 +17,23 @@ const GROUP_MODAL_MODES: Array<{ value: GroupModalMode; label: string }> = [
   { value: 'join', label: 'Join with code' },
 ]
 
+function getGroupActionErrorMessage(mode: GroupModalMode) {
+  return mode === 'create'
+    ? 'Could not create group. Please try again.'
+    : 'Could not join group. Check the invite code and try again.'
+}
+
 export default function NewGroupModal({ isOpen, onClose, onGroupSelected }: NewGroupModalProps) {
   const [mode, setMode] = useState<GroupModalMode>('create')
   const [name, setName] = useState('')
   const [code, setCode] = useState('')
-  const [error, setError] = useState<string | null>(null)
   const createGroup = useCreateGroup()
   const joinGroup = useJoinGroup()
+  const { showMessage } = useToast()
   const isPending = createGroup.isPending || joinGroup.isPending
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    setError(null)
 
     try {
       const group =
@@ -38,9 +44,13 @@ export default function NewGroupModal({ isOpen, onClose, onGroupSelected }: NewG
       setName('')
       setCode('')
       onClose()
+      showMessage(
+        mode === 'create' ? `Created group ${group.name}` : `Joined group ${group.name}`,
+        'success',
+      )
       onGroupSelected?.(group.id)
     } catch {
-      setError(mode === 'create' ? 'Could not create group.' : 'Could not join group.')
+      showMessage(getGroupActionErrorMessage(mode), 'error')
     }
   }
 
@@ -50,10 +60,7 @@ export default function NewGroupModal({ isOpen, onClose, onGroupSelected }: NewG
         <NewGroupModalHeader onClose={onClose} />
         <GroupModeToggle
           mode={mode}
-          onChange={(nextMode) => {
-            setMode(nextMode)
-            setError(null)
-          }}
+          onChange={setMode}
         />
 
         <form className="flex flex-col gap-40" onSubmit={handleSubmit}>
@@ -62,8 +69,6 @@ export default function NewGroupModal({ isOpen, onClose, onGroupSelected }: NewG
           ) : (
             <GroupCodeField value={code} onChange={setCode} />
           )}
-
-          {error && <p className="text-small font-semibold text-red-500">{error}</p>}
 
           <button
             type="submit"

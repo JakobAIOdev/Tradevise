@@ -114,12 +114,12 @@ export default function StockDetailPage() {
           <div className="flex w-full gap-3 pt-4 xl:mt-auto">
             <ActionButton
               label="Buy"
-              action={() => open('buy', { symbol: ticker, price: stock.price })}
+              action={() => open('buy', { symbol: ticker, name: stock.name, price: stock.price })}
             />
             <ActionButton
               label="Sell"
               disabled={!holding}
-              action={() => open('sell', { symbol: ticker, price: stock.price })}
+              action={() => open('sell', { symbol: ticker, name: stock.name, price: stock.price })}
             />
           </div>
         </div>

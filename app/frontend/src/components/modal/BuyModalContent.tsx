@@ -3,12 +3,14 @@ import { ChevronRight, X } from 'lucide-react'
 import { usePortfolio } from '../../hooks/usePortfolio'
 import { useTradeStock } from '../../hooks/useTradeStock'
 import { formatInputNumber, formatMoney, formatShares } from '../../utils/format'
+import { useToast } from '../../contexts/ToastContext'
 
 type BuyMode = 'amount' | 'shares'
 
 interface BuyModalContentProps {
   onClose: () => void
   symbol?: string
+  name?: string
   currentPrice: number | null
 }
 
@@ -23,13 +25,16 @@ function parseNumberInput(value: string) {
 export default function BuyModalContent({
   onClose,
   symbol,
+  name,
   currentPrice,
 }: BuyModalContentProps) {
+  const { showMessage } = useToast()
   const [mode, setMode] = useState<BuyMode>('amount')
   const [value, setValue] = useState(currentPrice ? formatInputNumber(currentPrice) : '')
   const [error, setError] = useState<string | null>(null)
   const { data: portfolio } = usePortfolio()
   const buyStock = useTradeStock('buy')
+  const stockLabel = name?.trim() || symbol
 
   const parsedValue = parseNumberInput(value)
   const availableCash = portfolio?.cash ?? 0
@@ -101,9 +106,10 @@ export default function BuyModalContent({
       {
         onSuccess: () => {
           onClose()
+          showMessage(`Bought ${quantity} shares of ${stockLabel}`, 'success')
         },
         onError: (tradeError) => {
-          setError(tradeError instanceof Error ? tradeError.message : 'Buy failed')
+          showMessage(tradeError instanceof Error ? tradeError.message : 'Buy failed', 'error')
         },
       },
     )
@@ -113,7 +119,7 @@ export default function BuyModalContent({
     <div className="space-y-8">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h2 className="text-h2 text-text">Invest in {symbol}</h2>
+          <h2 className="text-h2 text-text">Invest in {stockLabel}</h2>
           <p className="mt-1 text-small text-muted">{formatMoney(availableCash)} available</p>
         </div>
         <button
@@ -131,9 +137,7 @@ export default function BuyModalContent({
           type="button"
           onClick={() => handleModeChange('amount')}
           className={`rounded-[100px] px-7 py-3 text-body hover:cursor-pointer ${
-            mode === 'amount'
-              ? 'bg-text text-surface'
-              : 'border border-border bg-surface text-text'
+            mode === 'amount' ? 'bg-text text-surface' : 'border border-border bg-surface text-text'
           }`}
         >
           Amount
@@ -142,9 +146,7 @@ export default function BuyModalContent({
           type="button"
           onClick={() => handleModeChange('shares')}
           className={`rounded-[100px] px-7 py-3 text-body hover:cursor-pointer ${
-            mode === 'shares'
-              ? 'bg-text text-surface'
-              : 'border border-border bg-surface text-text'
+            mode === 'shares' ? 'bg-text text-surface' : 'border border-border bg-surface text-text'
           }`}
         >
           Shares
@@ -161,7 +163,9 @@ export default function BuyModalContent({
           onChange={(event) => setValue(event.target.value)}
           inputMode="decimal"
           className="mx-auto h-13 w-4/5 rounded-lg border border-border bg-surface px-5 text-body text-text outline-none focus:border-text"
-          placeholder={mode === 'amount' ? (currentPrice ? formatMoney(currentPrice) : 'Amount') : '1'}
+          placeholder={
+            mode === 'amount' ? (currentPrice ? formatMoney(currentPrice) : 'Amount') : '1'
+          }
         />
         <div className="space-y-1">
           <p className="text-body text-text">

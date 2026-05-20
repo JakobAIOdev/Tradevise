@@ -31,7 +31,7 @@ export default function AuthPage() {
 
   useEffect(() => {
     if (isAuthenticated) {
-      navigate('/home', { replace: true })
+      navigate('/', { replace: true })
     }
   }, [isAuthenticated, navigate])
 

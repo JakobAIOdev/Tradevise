@@ -2,7 +2,7 @@ import { LayoutDashboard, Wallet, Search, Trophy, Users } from 'lucide-react'
 import NavItem from './NavItem'
 
 const NAV_ITEMS = [
-  { to: '/home', icon: LayoutDashboard, label: 'Home' },
+  { to: '/', icon: LayoutDashboard, label: 'Home' },
   { to: '/portfolio', icon: Wallet, label: 'Portfolio' },
   { to: '/discover', icon: Search, label: 'Discover' },
   { to: '/ranking', icon: Trophy, label: 'Ranking' },

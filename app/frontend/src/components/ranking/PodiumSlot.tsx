@@ -1,10 +1,7 @@
 import { Medal, Trophy } from 'lucide-react'
 import type { LeaderboardEntry, LeaderboardMetric } from '../../types'
-import {
-  getInitials,
-  getLeaderboardDisplayValue,
-  getSeasonGainTextClass,
-} from '../../utils/initials'
+import { getInitials, getLeaderboardDisplayValue } from '../../utils/initials'
+import { getSignedTrendTextClass } from '../../utils/trend'
 
 type PodiumSlotProps = {
   entry?: LeaderboardEntry
@@ -36,7 +33,7 @@ export default function PodiumSlot({ entry, metric }: PodiumSlotProps) {
         </p>
         <p
           className={`text-small leading-tight ${
-            metric === 'seasonal' ? getSeasonGainTextClass(entry.seasonGainPercent) : 'text-muted'
+            metric === 'seasonal' ? getSignedTrendTextClass(entry.seasonGainPercent) : 'text-muted'
           }`}
           title={displayValue}
         >

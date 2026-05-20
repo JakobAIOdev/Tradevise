@@ -1,6 +1,7 @@
 import type { LeaderboardEntry, LeaderboardMetric } from '../../types'
 import { formatSignedPercent } from '../../utils/format'
-import { getLeaderboardDisplayValue, getSeasonGainTextClass } from '../../utils/initials'
+import { getLeaderboardDisplayValue } from '../../utils/initials'
+import { getSignedTrendTextClass } from '../../utils/trend'
 import LeaderboardUser from '../LeaderboardUser'
 
 type LeaderboardRowProps = {
@@ -12,7 +13,7 @@ export default function LeaderboardRow({ entry, metric }: LeaderboardRowProps) {
   const primaryValue = getLeaderboardDisplayValue(entry, metric)
   const seasonValue =
     entry.seasonGainPercent === null ? null : formatSignedPercent(entry.seasonGainPercent)
-  const seasonTrendClass = getSeasonGainTextClass(entry.seasonGainPercent)
+  const seasonTrendClass = getSignedTrendTextClass(entry.seasonGainPercent)
 
   return (
     <div
@@ -27,7 +28,7 @@ export default function LeaderboardRow({ entry, metric }: LeaderboardRowProps) {
       <div className="min-w-0 text-right">
         <p
           className={`truncate text-body leading-tight ${
-            metric === 'seasonal' ? getSeasonGainTextClass(entry.seasonGainPercent) : 'text-text'
+            metric === 'seasonal' ? getSignedTrendTextClass(entry.seasonGainPercent) : 'text-text'
           }`}
           title={primaryValue}
         >

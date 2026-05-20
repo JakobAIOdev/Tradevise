@@ -2,7 +2,7 @@ import { Trophy, Users } from 'lucide-react'
 import { useGroupLeaderboard } from '../../hooks/useGroups'
 import type { GroupSummary } from '../../types'
 import { formatSignedPercent } from '../../utils/format'
-import { getSeasonGainTextClass } from '../../utils/initials'
+import { getSignedTrendTextClass } from '../../utils/trend'
 
 type GroupOverviewCardProps = {
   group: GroupSummary
@@ -47,7 +47,7 @@ export default function GroupOverviewCard({ group, onOpen }: GroupOverviewCardPr
           <p className="truncate text-body">Top: {topEntry?.username ?? '-'}</p>
         </div>
 
-        <p className={`shrink-0 text-body ${getSeasonGainTextClass(currentGain ?? null)}`}>
+        <p className={`shrink-0 text-body ${getSignedTrendTextClass(currentGain)}`}>
           {typeof currentGain === 'number' ? formatSignedPercent(currentGain) : '-'}
         </p>
       </div>

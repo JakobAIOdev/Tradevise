@@ -3,6 +3,7 @@ import { ChevronUp, ChevronDown } from 'lucide-react'
 import StockLogo from '../StockLogo'
 import { Link } from 'react-router-dom'
 import Card from '../Card'
+import { getSignedTrendTextClass } from '../../utils/trend'
 
 interface StockCardProps extends Stock {
   interactive?: boolean
@@ -12,6 +13,7 @@ export default function StockCard(stock: StockCardProps) {
   const { name, ticker, change, logo } = stock
   const interactive = stock.interactive ?? true
   const positive = change >= 0
+  const changeClass = getSignedTrendTextClass(change)
   const cardClassName = `flex items-center gap-15 transition-colors ${
     interactive ? 'cursor-pointer hover:bg-surface-hover' : 'cursor-not-allowed opacity-70'
   }`
@@ -25,9 +27,7 @@ export default function StockCard(stock: StockCardProps) {
           <p className="text-small text-muted">{ticker}</p>
         </div>
       </div>
-      <span
-        className={`flex items-center gap-1 text-body font-medium shrink-0 ${positive ? 'text-bullish' : 'text-bearish'}`}
-      >
+      <span className={`flex items-center gap-1 text-body font-medium shrink-0 ${changeClass}`}>
         {positive ? (
           <ChevronUp size={20} strokeWidth={1.75} />
         ) : (

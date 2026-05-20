@@ -1,7 +1,7 @@
 import { X } from 'lucide-react'
 import { useState, type SubmitEventHandler } from 'react'
 import { useCreateGroup, useJoinGroup } from '../../hooks/useGroups'
-import { useToast } from '../../contexts/ToastContext'
+import { useToast } from '../../hooks/useToast'
 import Modal from '../modal/Modal'
 import Button from '../Button'
 import SegmentedControl from '../SegmentedControl'

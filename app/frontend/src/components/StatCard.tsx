@@ -1,23 +1,16 @@
 import type { LucideIcon } from 'lucide-react'
+import type { Trend } from '../utils/trend'
+import { getTrendTextClass } from '../utils/trend'
 import Card, { CardTitle } from './Card'
 
 interface StatCardProps {
   icon: LucideIcon
   label: string
   value: string
-  valueTrend?: 'positive' | 'negative' | 'neutral'
+  valueTrend?: Trend
   sub: string
-  subTrend?: 'positive' | 'negative' | 'neutral'
+  subTrend?: Trend
 }
-
-const trendColor = (trend?: 'positive' | 'negative' | 'neutral', muted = false) =>
-  trend === 'positive'
-    ? 'text-bullish'
-    : trend === 'negative'
-      ? 'text-bearish'
-      : muted
-        ? 'text-muted'
-        : 'text-text'
 
 export default function StatCard({
   icon: Icon,
@@ -36,8 +29,8 @@ export default function StatCard({
       >
         {label}
       </CardTitle>
-      <p className={`text-h2 ${trendColor(valueTrend)}`}>{value}</p>
-      <p className={`text-small ${trendColor(subTrend, true)}`}>{sub}</p>
+      <p className={`text-h2 ${getTrendTextClass(valueTrend)}`}>{value}</p>
+      <p className={`text-small ${getTrendTextClass(subTrend, 'text-muted')}`}>{sub}</p>
     </Card>
   )
 }

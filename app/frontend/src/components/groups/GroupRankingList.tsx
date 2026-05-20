@@ -1,6 +1,6 @@
 import type { LeaderboardEntry } from '../../types'
 import { formatSignedPercent } from '../../utils/format'
-import { getSeasonGainTextClass } from '../../utils/initials'
+import { getSignedTrendTextClass } from '../../utils/trend'
 import LeaderboardUser from '../LeaderboardUser'
 
 type GroupRankingListProps = {
@@ -42,7 +42,7 @@ function GroupRankingRow({ entry }: { entry: LeaderboardEntry }) {
       <p className="text-body-mobile font-bold text-muted">{entry.rank}</p>
       <LeaderboardUser username={entry.username} isCurrentUser={entry.isCurrentUser} />
       <p
-        className={`shrink-0 text-body-mobile font-medium ${getSeasonGainTextClass(
+        className={`shrink-0 text-body-mobile font-medium ${getSignedTrendTextClass(
           entry.seasonGainPercent,
         )}`}
       >

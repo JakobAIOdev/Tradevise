@@ -1,5 +1,6 @@
 import type { PortfolioHolding } from '../../types'
 import { formatMoney, formatShares } from '../../utils/format'
+import { getSignedTrendTextClass } from '../../utils/trend'
 import Card, { CardTitle } from '../Card'
 
 type PositionSummaryProps = {
@@ -10,6 +11,7 @@ type PositionSummaryProps = {
 export default function PositionSummary({ holding, isLoading = false }: PositionSummaryProps) {
   const profitLoss = holding?.profitLoss ?? 0
   const isPositive = profitLoss >= 0
+  const profitLossClass = getSignedTrendTextClass(profitLoss)
   const profitLossPercent =
     holding && holding.averagePrice > 0
       ? ((holding.currentPrice - holding.averagePrice) / holding.averagePrice) * 100
@@ -24,7 +26,7 @@ export default function PositionSummary({ holding, isLoading = false }: Position
         <CardTitle
           trailing={
             holding && (
-              <span className={isPositive ? 'text-bullish text-small' : 'text-bearish text-small'}>
+              <span className={`${profitLossClass} text-small`}>
                 {isPositive ? '+ ' : '- '}
                 {Math.abs(profitLossPercent).toFixed(2)} %
               </span>
@@ -53,7 +55,7 @@ export default function PositionSummary({ holding, isLoading = false }: Position
           </div>
           <div>
             <p className="text-xs text-muted">Profit/Loss</p>
-            <p className={`text-body tabular-nums ${isPositive ? 'text-bullish' : 'text-bearish'}`}>
+            <p className={`text-body tabular-nums ${profitLossClass}`}>
               {isPositive ? '+ ' : '- '}
               {formatMoney(Math.abs(profitLoss))}
             </p>

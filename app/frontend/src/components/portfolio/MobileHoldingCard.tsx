@@ -8,6 +8,7 @@ import {
   formatSignedMoney,
   formatSignedPercent,
 } from '../../utils/format'
+import { getSignedTrendTextClass } from '../../utils/trend'
 import HoldingMetric from './HoldingMetric'
 
 type MobileHoldingCardProps = {
@@ -15,8 +16,8 @@ type MobileHoldingCardProps = {
 }
 
 export default function MobileHoldingCard({ item }: MobileHoldingCardProps) {
-  const todayTone = item.todayChange >= 0 ? 'text-bullish' : 'text-bearish'
-  const totalTone = item.profitLoss >= 0 ? 'text-bullish' : 'text-bearish'
+  const todayTone = getSignedTrendTextClass(item.todayChange)
+  const totalTone = getSignedTrendTextClass(item.profitLoss)
 
   return (
     <Link
@@ -40,7 +41,9 @@ export default function MobileHoldingCard({ item }: MobileHoldingCardProps) {
           label="Today"
           value={formatSignedMoney(item.todayChange)}
           subValue={
-            item.todayChangePercent !== null ? formatSignedPercent(item.todayChangePercent) : undefined
+            item.todayChangePercent !== null
+              ? formatSignedPercent(item.todayChangePercent)
+              : undefined
           }
           tone={todayTone}
         />

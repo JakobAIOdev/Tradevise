@@ -3,7 +3,12 @@ import { ChevronRight, X } from 'lucide-react'
 import { usePortfolio } from '../../hooks/usePortfolio'
 import { useTradeStock } from '../../hooks/useTradeStock'
 import { formatInputNumber, formatMoney, formatShares } from '../../utils/format'
-import { useToast } from '../../contexts/ToastContext'
+import {
+  getOrderAmount,
+  getQuantityFromTradeInput,
+  parseNumberInput,
+} from '../../utils/trade-order'
+import { useToast } from '../../hooks/useToast'
 import Button from '../Button'
 import SegmentedControl from '../SegmentedControl'
 import TextField from '../TextField'
@@ -22,14 +27,6 @@ const BUY_MODE_OPTIONS: Array<{ value: BuyMode; label: string }> = [
   { value: 'shares', label: 'Shares' },
 ]
 
-function parseNumberInput(value: string) {
-  const normalizedValue = value.replace(',', '.').trim()
-  if (!normalizedValue) return 0
-
-  const parsedValue = Number(normalizedValue)
-  return Number.isFinite(parsedValue) ? parsedValue : Number.NaN
-}
-
 export default function BuyModalContent({
   onClose,
   symbol,
@@ -46,15 +43,12 @@ export default function BuyModalContent({
 
   const parsedValue = parseNumberInput(value)
   const availableCash = portfolio?.cash ?? 0
-  const quantity = useMemo(() => {
-    if (!Number.isFinite(parsedValue) || parsedValue <= 0) return 0
-    if (mode === 'shares') return parsedValue
-    if (!currentPrice) return 0
+  const quantity = useMemo(
+    () => getQuantityFromTradeInput({ mode, parsedValue, currentPrice }),
+    [currentPrice, mode, parsedValue],
+  )
 
-    return parsedValue / currentPrice
-  }, [currentPrice, mode, parsedValue])
-
-  const orderAmount = currentPrice ? quantity * currentPrice : 0
+  const orderAmount = getOrderAmount(quantity, currentPrice)
   const canSubmit =
     Boolean(symbol) &&
     Boolean(currentPrice) &&

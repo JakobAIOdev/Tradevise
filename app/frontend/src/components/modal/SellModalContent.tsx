@@ -3,7 +3,12 @@ import { ChevronRight, X } from 'lucide-react'
 import { usePortfolio } from '../../hooks/usePortfolio'
 import { useTradeStock } from '../../hooks/useTradeStock'
 import { formatInputNumber, formatMoney, formatShares } from '../../utils/format'
-import { useToast } from '../../contexts/ToastContext'
+import {
+  getOrderAmount,
+  getQuantityFromTradeInput,
+  parseNumberInput,
+} from '../../utils/trade-order'
+import { useToast } from '../../hooks/useToast'
 import Button from '../Button'
 import SegmentedControl from '../SegmentedControl'
 import TextField from '../TextField'
@@ -30,14 +35,6 @@ const SELL_MODE_OPTIONS: Array<{ value: SellMode; label: string }> = [
   { value: 'shares', label: 'Shares' },
   { value: 'percentage', label: 'Percentage' },
 ]
-
-function parseNumberInput(value: string) {
-  const normalizedValue = value.replace(',', '.').trim()
-  if (!normalizedValue) return 0
-
-  const parsedValue = Number(normalizedValue)
-  return Number.isFinite(parsedValue) ? parsedValue : Number.NaN
-}
 
 export default function SellModalContent({
   onClose,
@@ -73,14 +70,10 @@ export default function SellModalContent({
       return ownedShares * selectedPercentage
     }
 
-    if (!Number.isFinite(parsedValue) || parsedValue <= 0) return 0
-    if (mode === 'shares') return parsedValue
-    if (!currentPrice) return 0
-
-    return parsedValue / currentPrice
+    return getQuantityFromTradeInput({ mode, parsedValue, currentPrice })
   }, [currentPrice, customPercentage, mode, ownedShares, parsedValue, percentage])
 
-  const orderAmount = currentPrice ? quantity * currentPrice : 0
+  const orderAmount = getOrderAmount(quantity, currentPrice)
   const canSubmit =
     Boolean(symbol) &&
     Boolean(holding) &&

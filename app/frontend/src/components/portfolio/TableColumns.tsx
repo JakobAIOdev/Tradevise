@@ -1,7 +1,13 @@
 import { createColumnHelper } from '@tanstack/react-table'
 import { Link } from 'react-router-dom'
 import StockLogo from '../StockLogo'
-import { formatMoney, formatShares, formatSignedMoney, formatSignedPercent } from '../../utils/format'
+import {
+  formatMoney,
+  formatShares,
+  formatSignedMoney,
+  formatSignedPercent,
+} from '../../utils/format'
+import { getSignedTrendTextClass } from '../../utils/trend'
 import { buildHoldingLinkState } from './holdingLinkState'
 
 export type PortfolioTableRow = {
@@ -70,7 +76,7 @@ export const columns = [
     header: () => <span>Today</span>,
     cell: ({ row }) => {
       const item = row.original
-      const tone = item.todayChange >= 0 ? 'text-bullish' : 'text-bearish'
+      const tone = getSignedTrendTextClass(item.todayChange)
 
       return (
         <div className={`text-right ${tone}`}>
@@ -88,7 +94,7 @@ export const columns = [
     header: () => <span>Total P/L</span>,
     cell: ({ row }) => {
       const item = row.original
-      const tone = item.profitLoss >= 0 ? 'text-bullish' : 'text-bearish'
+      const tone = getSignedTrendTextClass(item.profitLoss)
 
       return (
         <div className={`text-right ${tone}`}>

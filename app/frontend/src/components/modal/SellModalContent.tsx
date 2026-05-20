@@ -156,7 +156,7 @@ export default function SellModalContent({
       {
         onSuccess: () => {
           onClose()
-          showMessage(`Sold ${quantity} shares of ${stockLabel}`, 'success')
+          showMessage(`Sold ${formatShares(quantity)} shares of ${stockLabel}`, 'success')
         },
         onError: (tradeError) => {
           showMessage(tradeError instanceof Error ? tradeError.message : 'Sell failed', 'error')

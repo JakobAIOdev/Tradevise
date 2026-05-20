@@ -1,4 +1,14 @@
-import { Controller, Get, Param, Query, Sse, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Post,
+  Query,
+  Sse,
+  UseGuards,
+} from '@nestjs/common';
+import { CurrentUser } from '../auth/decorators/current-user.decorator.js';
 import { AccessTokenGuard } from '../auth/guards/access-token.guard.js';
 import { StocksService } from './stocks.service.js';
 
@@ -15,6 +25,27 @@ export class StocksController {
   @Get('discover')
   discover() {
     return this.stocksService.getDiscoverStocks();
+  }
+
+  @Get('watchlist')
+  watchlist(@CurrentUser('sub') userId: string) {
+    return this.stocksService.getWatchlistStocks(userId);
+  }
+
+  @Post('watchlist/:ticker')
+  addToWatchlist(
+    @CurrentUser('sub') userId: string,
+    @Param('ticker') ticker: string,
+  ) {
+    return this.stocksService.addToWatchlist(userId, ticker);
+  }
+
+  @Delete('watchlist/:ticker')
+  removeFromWatchlist(
+    @CurrentUser('sub') userId: string,
+    @Param('ticker') ticker: string,
+  ) {
+    return this.stocksService.removeFromWatchlist(userId, ticker);
   }
 
   @Sse('live')

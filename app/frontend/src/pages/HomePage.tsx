@@ -5,6 +5,7 @@ import PageTitle from '../components/PageTitle'
 import { formatMoney, formatSignedMoney, formatSignedPercent } from '../utils/format'
 import StockChart from '../components/chart/StockChart'
 import { useHomePortfolio } from '../hooks/useHomePortfolio'
+import WatchlistSection from '../components/watchlist/WatchlistSection'
 
 export default function HomePage() {
   const {
@@ -68,6 +69,8 @@ export default function HomePage() {
           />
         </div>
       </div>
+
+      <WatchlistSection />
     </div>
   )
 }

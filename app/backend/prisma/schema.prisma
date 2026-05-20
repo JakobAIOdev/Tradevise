@@ -19,6 +19,7 @@ model User {
   holdings         PortfolioHolding[]
   transactions     Transaction[]
   portfolios       Portfolio[]
+  watchlistItems   WatchlistItem[]
   ownedGroups      Group[]            @relation("GroupOwner")
   groupMemberships GroupMember[]      @relation("GroupMemberUser")
 }
@@ -107,6 +108,19 @@ model Portfolio {
   updatedAt DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model WatchlistItem {
+  id        String   @id @default(cuid())
+  userId    String
+  symbol    String   @db.Text
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, symbol])
+  @@index([symbol])
+  @@map("watchlist_items")
 }
 
 model Group {

@@ -10,12 +10,14 @@ export default function ModalRoot() {
         isOpen={activeModal === 'buy'}
         onClose={close}
         symbol={payload.symbol}
+        name={payload.name}
         price={payload.price}
       />
       <SellModal
         isOpen={activeModal === 'sell'}
         onClose={close}
         symbol={payload.symbol}
+        name={payload.name}
         price={payload.price}
       />
     </>

@@ -3,6 +3,7 @@ import { ChevronRight, X } from 'lucide-react'
 import { usePortfolio } from '../../hooks/usePortfolio'
 import { useTradeStock } from '../../hooks/useTradeStock'
 import { formatInputNumber, formatMoney, formatShares } from '../../utils/format'
+import { useToast } from '../../contexts/ToastContext'
 
 type SellMode = 'amount' | 'shares' | 'percentage'
 type SellPercentage = 0.25 | 0.5 | 1
@@ -11,6 +12,7 @@ type PercentageSelection = SellPercentage | 'custom'
 interface SellModalContentProps {
   onClose: () => void
   symbol?: string
+  name?: string
   currentPrice: number | null
 }
 
@@ -31,8 +33,10 @@ function parseNumberInput(value: string) {
 export default function SellModalContent({
   onClose,
   symbol,
+  name,
   currentPrice,
 }: SellModalContentProps) {
+  const { showMessage } = useToast()
   const [mode, setMode] = useState<SellMode>('percentage')
   const [value, setValue] = useState('1')
   const [percentage, setPercentage] = useState<PercentageSelection>(0.25)
@@ -41,6 +45,7 @@ export default function SellModalContent({
   const { data: portfolio } = usePortfolio()
   const sellStock = useTradeStock('sell')
   const holding = portfolio?.holdings.find((item) => item.symbol === symbol)
+  const stockLabel = name?.trim() || symbol
   const ownedShares = holding?.quantity ?? 0
   const parsedValue = parseNumberInput(value)
   const quantity = useMemo(() => {
@@ -147,16 +152,14 @@ export default function SellModalContent({
     }
 
     sellStock.mutate(
-      {
-        symbol,
-        quantity,
-      },
+      { symbol, quantity },
       {
         onSuccess: () => {
           onClose()
+          showMessage(`Sold ${quantity} shares of ${stockLabel}`, 'success')
         },
         onError: (tradeError) => {
-          setError(tradeError instanceof Error ? tradeError.message : 'Sell failed')
+          showMessage(tradeError instanceof Error ? tradeError.message : 'Sell failed', 'error')
         },
       },
     )
@@ -166,7 +169,7 @@ export default function SellModalContent({
     <div className="space-y-8">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h2 className="text-h2 text-text">Sell {symbol}</h2>
+          <h2 className="text-h2 text-text">Sell {stockLabel}</h2>
           <p className="mt-1 text-small text-muted">{formatShares(ownedShares)} shares held</p>
         </div>
         <button
@@ -184,9 +187,7 @@ export default function SellModalContent({
           type="button"
           onClick={() => handleModeChange('amount')}
           className={`rounded-[100px] px-7 py-3 text-body hover:cursor-pointer ${
-            mode === 'amount'
-              ? 'bg-text text-surface'
-              : 'border border-border bg-surface text-text'
+            mode === 'amount' ? 'bg-text text-surface' : 'border border-border bg-surface text-text'
           }`}
         >
           Amount
@@ -195,9 +196,7 @@ export default function SellModalContent({
           type="button"
           onClick={() => handleModeChange('shares')}
           className={`rounded-[100px] px-7 py-3 text-body hover:cursor-pointer ${
-            mode === 'shares'
-              ? 'bg-text text-surface'
-              : 'border border-border bg-surface text-text'
+            mode === 'shares' ? 'bg-text text-surface' : 'border border-border bg-surface text-text'
           }`}
         >
           Shares
@@ -271,7 +270,9 @@ export default function SellModalContent({
             onChange={(event) => setValue(event.target.value)}
             inputMode="decimal"
             className="mx-auto h-13 w-4/5 rounded-lg border border-border bg-surface px-5 text-body text-text outline-none focus:border-text"
-            placeholder={mode === 'amount' ? (currentPrice ? formatMoney(currentPrice) : 'Amount') : '1'}
+            placeholder={
+              mode === 'amount' ? (currentPrice ? formatMoney(currentPrice) : 'Amount') : '1'
+            }
           />
           <div className="space-y-1">
             <p className="text-body text-text">

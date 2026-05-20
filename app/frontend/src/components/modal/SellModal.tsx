@@ -7,10 +7,11 @@ interface SellModalProps {
   isOpen: boolean
   onClose: () => void
   symbol?: string
+  name?: string
   price?: number
 }
 
-export default function SellModal({ isOpen, onClose, symbol, price }: SellModalProps) {
+export default function SellModal({ isOpen, onClose, symbol, name, price }: SellModalProps) {
   const { data: liveStock } = useQuery<Stock | undefined>({
     queryKey: ['stock-detail', symbol ?? ''],
     queryFn: async () => undefined,
@@ -18,6 +19,7 @@ export default function SellModal({ isOpen, onClose, symbol, price }: SellModalP
   })
 
   const livePrice = liveStock && liveStock.ticker === symbol ? liveStock.price : undefined
+  const stockName = liveStock && liveStock.ticker === symbol ? liveStock.name : name
   const resolvedPrice = typeof livePrice === 'number' && livePrice > 0 ? livePrice : price
   const currentPrice = typeof resolvedPrice === 'number' && resolvedPrice > 0 ? resolvedPrice : null
 
@@ -27,6 +29,7 @@ export default function SellModal({ isOpen, onClose, symbol, price }: SellModalP
         key={symbol ?? 'sell-modal'}
         onClose={onClose}
         symbol={symbol}
+        name={stockName}
         currentPrice={currentPrice}
       />
     </Modal>

@@ -12,6 +12,8 @@ import { AuthError } from './lib/api'
 import { useAuthBootstrap } from './hooks/useAuthBootstrap'
 import ModalRoot from './components/modal/ModalRoot'
 import HomePage from './pages/HomePage'
+import { ToastProvider } from './contexts/ToastContext'
+import ToastMessage from './components/ToastMessage'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -29,28 +31,31 @@ function App() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      {isAuthInitialized && (
-        <>
-          <BrowserRouter>
-            <Routes>
-              <Route element={<PublicLayout />}>
-                <Route path="/login" element={<AuthPage />} />
-              </Route>
+      <ToastProvider>
+        {isAuthInitialized && (
+          <>
+            <BrowserRouter>
+              <Routes>
+                <Route element={<PublicLayout />}>
+                  <Route path="/login" element={<AuthPage />} />
+                </Route>
 
-              <Route element={<DashboardLayout />}>
-                <Route path="/" element={<HomePage />} />
-                <Route path="/portfolio" element={<PortfolioPage />} />
-                <Route path="/discover" element={<DiscoverPage />} />
-                <Route path="/detail/:ticker" element={<StockDetailPage />} />
-                <Route path="/ranking" element={<RankedPage />} />
-                <Route path="/groups" element={<GroupPage />} />
-                <Route path="/groups/:groupId" element={<GroupPage />} />
-              </Route>
-            </Routes>
-          </BrowserRouter>
-          <ModalRoot />
-        </>
-      )}
+                <Route element={<DashboardLayout />}>
+                  <Route path="/" element={<HomePage />} />
+                  <Route path="/portfolio" element={<PortfolioPage />} />
+                  <Route path="/discover" element={<DiscoverPage />} />
+                  <Route path="/detail/:ticker" element={<StockDetailPage />} />
+                  <Route path="/ranking" element={<RankedPage />} />
+                  <Route path="/groups" element={<GroupPage />} />
+                  <Route path="/groups/:groupId" element={<GroupPage />} />
+                </Route>
+              </Routes>
+            </BrowserRouter>
+            <ModalRoot />
+            <ToastMessage />
+          </>
+        )}
+      </ToastProvider>
     </QueryClientProvider>
   )
 }

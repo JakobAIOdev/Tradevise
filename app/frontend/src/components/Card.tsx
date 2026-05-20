@@ -32,10 +32,6 @@ const titleSpacingClass: Record<CardTitleSpacing, string> = {
   md: 'mb-18',
 }
 
-function cx(...classes: Array<string | false | null | undefined>) {
-  return classes.filter(Boolean).join(' ')
-}
-
 export default function Card({
   as: Component = 'div',
   title,
@@ -47,7 +43,7 @@ export default function Card({
 }: CardProps) {
   return (
     <Component
-      className={cx('rounded-xl border border-border bg-surface', paddingClass[padding], className)}
+      className={`rounded-xl border border-border bg-surface ${paddingClass[padding]} ${className ?? ''}`}
       {...props}
     >
       {title && <div className={titleSpacingClass[titleSpacing]}>{title}</div>}
@@ -66,21 +62,21 @@ export function CardTitle({
   trailingClassName,
 }: CardTitleProps) {
   return (
-    <div className={cx('flex items-center justify-between gap-12', className)}>
+    <div className={`flex items-center justify-between gap-12 ${className ?? ''}`}>
       <div className="flex min-w-0 items-center gap-8">
         {leading && (
-          <span className={cx('flex shrink-0 items-center text-muted', leadingClassName)}>
+          <span className={`flex shrink-0 items-center text-muted ${leadingClassName ?? ''}`}>
             {leading}
           </span>
         )}
         {children && (
-          <div className={cx('truncate text-body font-bold text-text', titleClassName)}>
+          <div className={`truncate text-body font-bold text-text ${titleClassName ?? ''}`}>
             {children}
           </div>
         )}
       </div>
 
-      {trailing && <div className={cx('shrink-0', trailingClassName)}>{trailing}</div>}
+      {trailing && <div className={`shrink-0 ${trailingClassName ?? ''}`}>{trailing}</div>}
     </div>
   )
 }

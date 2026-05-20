@@ -1,4 +1,4 @@
-import { ExternalLink, Star } from 'lucide-react'
+import { ExternalLink } from 'lucide-react'
 import BackLink from '../components/BackLink'
 import { useEffect, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
@@ -15,6 +15,9 @@ import { usePortfolio } from '../hooks/usePortfolio'
 import type { Stock } from '../types'
 import { useModalStore } from '../stores/useModalStore'
 import type { ChartRange } from '../types/chart'
+import { useWatchlistStocks } from '../hooks/useWatchlistStocks'
+import { DISCOVER_STOCKS_QUERY_KEY } from '../hooks/useDiscoverStocks'
+import FavoriteButton from '../components/watchlist/FavoriteButton'
 
 type StockDetailLocationState = {
   stock?: Stock
@@ -50,18 +53,23 @@ export default function StockDetailPage() {
   const { open } = useModalStore()
   const location = useLocation()
   const queryClient = useQueryClient()
-  const [isFavorite, setIsFavorite] = useState(false)
   const [range, setRange] = useState<ChartRange>('intraday')
   useStockLivePrice(ticker)
 
   const { data: statistics, isFetching: statisticsFetching } = useStockStatistics(ticker)
   const { data: portfolio, isFetching: portfolioFetching } = usePortfolio()
   const { data: chart } = useStockChart(ticker, range)
+  const {
+    data: watchlist = [],
+    addToWatchlist,
+    removeFromWatchlist,
+    isUpdating: isWatchlistUpdating,
+  } = useWatchlistStocks()
 
   const holding = portfolio?.holdings.find((item) => item.symbol === ticker)
   const stateStock = (location.state as StockDetailLocationState | null)?.stock
   const discoverStock = queryClient
-    .getQueryData<Stock[]>(['discover-stocks'])
+    .getQueryData<Stock[]>(DISCOVER_STOCKS_QUERY_KEY)
     ?.find((stock) => stock.ticker === ticker)
   const fallbackStock: Stock = {
     name: ticker,
@@ -71,11 +79,12 @@ export default function StockDetailPage() {
     positiveChange: true,
   }
   const initialStock = stateStock ?? discoverStock ?? fallbackStock
+  const isFavorite = watchlist.some((item) => item.ticker === ticker)
 
   const { data: stock = initialStock } = useQuery({
     queryKey: ['stock-detail', ticker],
-    queryFn: async () => queryClient.getQueryData<Stock>(['stock-detail', ticker]) ?? initialStock,
-    initialData: () => queryClient.getQueryData<Stock>(['stock-detail', ticker]) ?? initialStock,
+    queryFn: async () => initialStock,
+    initialData: initialStock,
     enabled: false,
     staleTime: Infinity,
   })
@@ -94,14 +103,25 @@ export default function StockDetailPage() {
     }
   }, [stock.name, stock.ticker])
 
+  async function toggleFavorite() {
+    if (isWatchlistUpdating) return
+
+    if (isFavorite) {
+      await removeFromWatchlist(ticker)
+      return
+    }
+
+    await addToWatchlist(ticker)
+  }
+
   return (
     <div className="max-w-300">
       <div className="flex justify-between items-center mb-6">
         <BackLink />
-        <Star
-          size={25}
-          className={`cursor-pointer ${isFavorite ? 'fill-[#EECD15] stroke-[#EECD15]' : 'fill-surface stroke-muted'}`}
-          onClick={() => setIsFavorite(!isFavorite)}
+        <FavoriteButton
+          isFavorite={isFavorite}
+          isPending={isWatchlistUpdating}
+          onToggle={() => void toggleFavorite()}
         />
       </div>
       <DetailHeader {...displayStock} />

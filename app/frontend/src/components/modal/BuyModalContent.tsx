@@ -145,7 +145,6 @@ export default function BuyModalContent({
           onChange={(event) => setValue(event.target.value)}
           inputMode="decimal"
           labelClassName="text-body text-text"
-          inputClassName="mx-auto w-4/5"
           placeholder={
             mode === 'amount' ? (currentPrice ? formatMoney(currentPrice) : 'Amount') : '1'
           }

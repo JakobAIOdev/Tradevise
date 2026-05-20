@@ -106,7 +106,7 @@ export default function BuyModalContent({
       {
         onSuccess: () => {
           onClose()
-          showMessage(`Bought ${quantity} shares of ${stockLabel}`, 'success')
+          showMessage(`Bought ${formatShares(quantity)} shares of ${stockLabel}`, 'success')
         },
         onError: (tradeError) => {
           showMessage(tradeError instanceof Error ? tradeError.message : 'Buy failed', 'error')

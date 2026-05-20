@@ -1,4 +1,5 @@
 import type { LucideIcon } from 'lucide-react'
+import Card, { CardTitle } from './Card'
 
 interface StatCardProps {
   icon: LucideIcon
@@ -27,15 +28,16 @@ export default function StatCard({
   subTrend,
 }: StatCardProps) {
   return (
-    <div className="flex h-full min-h-40 flex-col gap-10 rounded-xl border border-border bg-surface p-25">
-      <div className="flex items-center gap-8 text-muted">
-        <Icon size={20} strokeWidth={1.5} />
-        <span className="text-small">{label}</span>
-      </div>
-
+    <Card className="flex h-full min-h-40 flex-col gap-10">
+      <CardTitle
+        leading={<Icon size={20} strokeWidth={1.5} />}
+        className="text-muted"
+        titleClassName="text-small font-normal text-muted"
+      >
+        {label}
+      </CardTitle>
       <p className={`text-h2 ${trendColor(valueTrend)}`}>{value}</p>
-
       <p className={`text-small ${trendColor(subTrend, true)}`}>{sub}</p>
-    </div>
+    </Card>
   )
 }

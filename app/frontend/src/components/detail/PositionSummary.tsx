@@ -1,5 +1,6 @@
 import type { PortfolioHolding } from '../../types'
 import { formatMoney, formatShares } from '../../utils/format'
+import Card, { CardTitle } from '../Card'
 
 type PositionSummaryProps = {
   holding?: PortfolioHolding
@@ -15,17 +16,25 @@ export default function PositionSummary({ holding, isLoading = false }: Position
       : 0
 
   return (
-    <div className="bg-surface h-45 border border-border rounded-xl px-25 pt-5">
-      <div className="flex items-center gap-x-8">
-        <p className="text-text text-body">Your Position</p>
-        {holding && (
-          <span className={isPositive ? 'text-bullish text-small' : 'text-bearish text-small'}>
-            {isPositive ? '+ ' : '- '}
-            {Math.abs(profitLossPercent).toFixed(2)} %
-          </span>
-        )}
-      </div>
-
+    <Card
+      className="h-45 px-25 pt-5"
+      padding="none"
+      titleSpacing="none"
+      title={
+        <CardTitle
+          trailing={
+            holding && (
+              <span className={isPositive ? 'text-bullish text-small' : 'text-bearish text-small'}>
+                {isPositive ? '+ ' : '- '}
+                {Math.abs(profitLossPercent).toFixed(2)} %
+              </span>
+            )
+          }
+        >
+          Your Position
+        </CardTitle>
+      }
+    >
       {isLoading ? (
         <p className="mt-6 text-small text-muted">Loading position...</p>
       ) : holding ? (
@@ -53,6 +62,6 @@ export default function PositionSummary({ holding, isLoading = false }: Position
       ) : (
         <p className="mt-6 text-small text-muted">You do not own this stock yet.</p>
       )}
-    </div>
+    </Card>
   )
 }

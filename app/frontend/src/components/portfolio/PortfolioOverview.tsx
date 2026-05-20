@@ -4,6 +4,7 @@ import AllocationLegend from './overview/AllocationLegend'
 import PortfolioActions from './overview/PortfolioActions'
 import PortfolioSummary from './overview/PortfolioSummary'
 import { buildAllocation } from '../../utils/portfolio-allocation'
+import Card from '../Card'
 
 type PortfolioOverviewProps = {
   rows: PortfolioTableRow[]
@@ -22,7 +23,10 @@ export default function PortfolioOverview({
   const allocation = buildAllocation(rows, investedValue)
 
   return (
-    <section className="grid gap-25 rounded-2xl border border-border bg-surface p-25 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-center xl:grid-cols-[minmax(0,1fr)_420px]">
+    <Card
+      as="section"
+      className="grid gap-25 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-center xl:grid-cols-[minmax(0,1fr)_420px]"
+    >
       <div className="order-1 min-w-0 lg:col-start-1 lg:row-start-1">
         <PortfolioSummary
           portfolioValue={investedValue}
@@ -43,6 +47,6 @@ export default function PortfolioOverview({
       <div className="order-4 lg:col-start-1 lg:row-start-2">
         <PortfolioActions />
       </div>
-    </section>
+    </Card>
   )
 }

@@ -11,12 +11,15 @@ import { CustomTooltip } from './CustomTooltip'
 import { formatDate, formatPrice, getIntradayAxisConfig } from '../../utils/chart-helper'
 import type { ChartHistoryResponse, ChartRange } from '../../types/chart'
 import ChartFilter from './ChartFilter'
+import Card, { CardTitle } from '../Card'
+import type { ReactNode } from 'react'
 
 interface StockChartProps {
   ticker: string
   range: ChartRange
   onRangeChange: (range: ChartRange) => void
   data?: ChartHistoryResponse
+  title?: ReactNode
 }
 
 const MIN_GRID_STEPS_PER_SIDE = 2
@@ -102,7 +105,7 @@ function getPriceAxisWidth(ticks: number[]) {
   return longestLabelLength * 10
 }
 
-const StockChart = ({ ticker, range, onRangeChange, data }: StockChartProps) => {
+const StockChart = ({ ticker, range, onRangeChange, data, title }: StockChartProps) => {
   const points = !data?.points
     ? []
     : data.points.map((point, index) => ({
@@ -120,81 +123,94 @@ const StockChart = ({ ticker, range, onRangeChange, data }: StockChartProps) => 
   const lastPrice = points.at(-1)?.price
 
   return (
-    <div className="p-25 w-full h-full bg-surface border border-border rounded-xl">
-      <div className="flex gap-8">
-        {RANGE_OPTIONS.map((option) => (
-          <ChartFilter
-            key={option.value}
-            label={option.label}
-            isActive={range === option.value}
-            setActive={onRangeChange}
-            value={option.value}
-          />
-        ))}
-      </div>
-      <ResponsiveContainer width="100%" height="100%" className="pb-25">
-        <LineChart key={`${ticker}-${range}`} data={points}>
-          <XAxis
-            type="number"
-            dataKey="x"
-            scale={range === 'intraday' ? 'time' : 'linear'}
-            domain={range === 'intraday' ? intradayAxis.domain : ['dataMin', 'dataMax']}
-            ticks={xAxisTicks}
-            axisLine={false}
-            tickLine={false}
-            minTickGap={24}
-            tick={AXIS_TICK_STYLE}
-            dy={16}
-            tickFormatter={(value) => {
-              const point = points[Math.round(value)]
-              return formatDate(point?.time ?? value, range)
-            }}
-          />
-          <YAxis
-            type="number"
-            orientation="right"
-            dataKey="price"
-            axisLine={false}
-            tickLine={false}
-            ticks={priceAxis.ticks}
-            width={priceAxisWidth}
-            dx={10}
-            tick={AXIS_TICK_STYLE}
-            tickFormatter={(value) => formatPrice(value)}
-            domain={priceAxis.domain}
-          />
-          {gridTicks.map((tick) => (
-            <ReferenceLine
-              key={tick}
-              y={tick}
-              stroke="var(--color-sparkline)"
-              strokeOpacity={0.1}
+    <Card
+      className="flex h-full w-full flex-col"
+      title={
+        <CardTitle
+          className="justify-start flex-wrap"
+          leading={
+            <div className="flex flex-wrap gap-8">
+              {RANGE_OPTIONS.map((option) => (
+                <ChartFilter
+                  key={option.value}
+                  label={option.label}
+                  isActive={range === option.value}
+                  setActive={onRangeChange}
+                  value={option.value}
+                />
+              ))}
+            </div>
+          }
+        >
+          {title}
+        </CardTitle>
+      }
+    >
+      <div className="min-h-0 flex-1 pb-25">
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart key={`${ticker}-${range}`} data={points}>
+            <XAxis
+              type="number"
+              dataKey="x"
+              scale={range === 'intraday' ? 'time' : 'linear'}
+              domain={range === 'intraday' ? intradayAxis.domain : ['dataMin', 'dataMax']}
+              ticks={xAxisTicks}
+              axisLine={false}
+              tickLine={false}
+              minTickGap={24}
+              tick={AXIS_TICK_STYLE}
+              dy={16}
+              tickFormatter={(value) => {
+                const point = points[Math.round(value)]
+                return formatDate(point?.time ?? value, range)
+              }}
             />
-          ))}
-          <ReferenceLine
-            y={priceAxis.baseline}
-            stroke="var(--color-text)"
-            strokeOpacity={0.35}
-            strokeDasharray="4 4"
-          />
-          <Line
-            type="monotone"
-            dataKey="price"
-            stroke={
-              baseline == null || lastPrice == null || lastPrice >= baseline
-                ? 'var(--color-bullish)'
-                : 'var(--color-bearish)'
-            }
-            strokeWidth={3}
-            dot={false}
-          />
-          <Tooltip
-            content={(props) => <CustomTooltip {...props} source={data?.source ?? 'intraday'} />}
-            animationDuration={50}
-          />
-        </LineChart>
-      </ResponsiveContainer>
-    </div>
+            <YAxis
+              type="number"
+              orientation="right"
+              dataKey="price"
+              axisLine={false}
+              tickLine={false}
+              ticks={priceAxis.ticks}
+              width={priceAxisWidth}
+              dx={10}
+              tick={AXIS_TICK_STYLE}
+              tickFormatter={(value) => formatPrice(value)}
+              domain={priceAxis.domain}
+            />
+            {gridTicks.map((tick) => (
+              <ReferenceLine
+                key={tick}
+                y={tick}
+                stroke="var(--color-sparkline)"
+                strokeOpacity={0.1}
+              />
+            ))}
+            <ReferenceLine
+              y={priceAxis.baseline}
+              stroke="var(--color-text)"
+              strokeOpacity={0.35}
+              strokeDasharray="4 4"
+            />
+            <Line
+              type="monotone"
+              dataKey="price"
+              stroke={
+                baseline == null || lastPrice == null || lastPrice >= baseline
+                  ? 'var(--color-bullish)'
+                  : 'var(--color-bearish)'
+              }
+              strokeWidth={3}
+              dot={false}
+            />
+            <Tooltip
+              content={(props) => <CustomTooltip {...props} source={data?.source ?? 'intraday'} />}
+              animationDuration={50}
+            />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+    </Card>
   )
 }
 

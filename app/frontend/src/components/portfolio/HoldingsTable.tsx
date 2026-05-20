@@ -6,6 +6,7 @@ import {
 } from '@tanstack/react-table'
 import { columns, type PortfolioTableRow } from './TableColumns'
 import MobileHoldingCard from './MobileHoldingCard'
+import Card from '../Card'
 
 type HoldingsTableProps = {
   data: PortfolioTableRow[]
@@ -24,7 +25,7 @@ export default function HoldingsTable({ data }: HoldingsTableProps) {
   })
 
   return (
-    <section className="holdings-layout overflow-hidden rounded-2xl border border-border bg-surface">
+    <Card as="section" padding="none" className="holdings-layout overflow-hidden">
       {table.getRowModel().rows.length > 0 ? (
         <>
           <div className="holdings-mobile divide-y divide-border">
@@ -71,6 +72,6 @@ export default function HoldingsTable({ data }: HoldingsTableProps) {
       ) : (
         <div className="px-25 py-25 text-body text-muted">No positions yet.</div>
       )}
-    </section>
+    </Card>
   )
 }

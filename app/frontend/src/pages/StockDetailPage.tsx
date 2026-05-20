@@ -18,6 +18,7 @@ import type { ChartRange } from '../types/chart'
 import { useWatchlistStocks } from '../hooks/useWatchlistStocks'
 import { DISCOVER_STOCKS_QUERY_KEY } from '../hooks/useDiscoverStocks'
 import FavoriteButton from '../components/watchlist/FavoriteButton'
+import Card, { CardTitle } from '../components/Card'
 
 type StockDetailLocationState = {
   stock?: Stock
@@ -146,15 +147,22 @@ export default function StockDetailPage() {
       </div>
       <div className="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-2">
         <PositionSummary holding={holding} isLoading={portfolioFetching && !portfolio} />
-        <div className="bg-surface h-45 border border-border rounded-xl px-25 pt-5">
-          <div className="flex justify-between">
-            <p className="text-text text-body">About {stock.name}</p>
-            <ExternalLink size={20} strokeWidth={1.5} className="text-muted" />
-          </div>
+        <Card
+          className="h-45 px-25 pt-5"
+          padding="none"
+          titleSpacing="none"
+          title={
+            <CardTitle
+              trailing={<ExternalLink size={20} strokeWidth={1.5} className="text-muted" />}
+            >
+              About {stock.name}
+            </CardTitle>
+          }
+        >
           <p className="text-muted text-small mt-6">
             {stock.name} {stock.ticker}.
           </p>
-        </div>
+        </Card>
       </div>
     </div>
   )

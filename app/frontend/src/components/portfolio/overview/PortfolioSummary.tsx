@@ -1,4 +1,5 @@
 import { formatMoney, formatSignedMoney, formatSignedPercent } from '../../../utils/format'
+import { getSignedTrendTextClass } from '../../../utils/trend'
 
 type PortfolioSummaryProps = {
   portfolioValue: number
@@ -13,7 +14,7 @@ export default function PortfolioSummary({
   todayChange,
   todayChangePercent,
 }: PortfolioSummaryProps) {
-  const changeTone = todayChange >= 0 ? 'text-bullish' : 'text-bearish'
+  const changeTone = getSignedTrendTextClass(todayChange)
 
   return (
     <>

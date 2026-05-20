@@ -58,16 +58,13 @@ export default function HomePage() {
         />
       </div>
 
-      <div className="flex flex-col gap-10">
-        <p className="text-h2 text-text">Portfolio Performance</p>
-        <div className="h-111.5">
-          <StockChart
-            ticker="PORTFOLIO"
-            range={range}
-            onRangeChange={setRange}
-            data={portfolioChart}
-          />
-        </div>
+      <div className="h-111.5">
+        <StockChart
+          ticker="PORTFOLIO"
+          range={range}
+          onRangeChange={setRange}
+          data={portfolioChart}
+        />
       </div>
 
       <WatchlistSection />

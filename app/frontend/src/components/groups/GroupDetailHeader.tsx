@@ -1,6 +1,7 @@
 import { X } from 'lucide-react'
 import { useAuthStore } from '../../stores/authStore'
 import type { GroupDetail } from '../../types'
+import Button from '../Button'
 import GroupInviteCode from './GroupInviteCode'
 
 type GroupDetailHeaderProps = {
@@ -36,14 +37,15 @@ export default function GroupDetailHeader({
       </div>
 
       {onClose && (
-        <button
-          type="button"
+        <Button
+          variant="secondary"
+          size="icon"
           onClick={onClose}
-          className="shrink-0 rounded-lg border border-border p-2 text-text transition-colors hover:cursor-pointer hover:bg-surface-hover"
+          className="shrink-0"
           aria-label="Close group details"
         >
           <X size={20} strokeWidth={1.5} />
-        </button>
+        </Button>
       )}
     </div>
   )

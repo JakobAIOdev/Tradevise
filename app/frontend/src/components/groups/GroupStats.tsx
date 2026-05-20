@@ -1,5 +1,5 @@
 import { formatSignedPercent } from '../../utils/format'
-import { getSeasonGainTextClass } from '../../utils/initials'
+import { getSignedTrendTextClass } from '../../utils/trend'
 
 type GroupStatsProps = {
   memberCount?: number
@@ -30,7 +30,7 @@ function GroupStat({
   label: string
   trend?: number | null
 }) {
-  const valueClass = typeof trend === 'number' ? getSeasonGainTextClass(trend) : 'text-text'
+  const valueClass = getSignedTrendTextClass(trend, 'text-text')
 
   return (
     <div className="rounded-2xl bg-surface-hover px-3 py-5 text-center">

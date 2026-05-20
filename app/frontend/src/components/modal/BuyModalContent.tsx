@@ -3,7 +3,15 @@ import { ChevronRight, X } from 'lucide-react'
 import { usePortfolio } from '../../hooks/usePortfolio'
 import { useTradeStock } from '../../hooks/useTradeStock'
 import { formatInputNumber, formatMoney, formatShares } from '../../utils/format'
-import { useToast } from '../../contexts/ToastContext'
+import {
+  getOrderAmount,
+  getQuantityFromTradeInput,
+  parseNumberInput,
+} from '../../utils/trade-order'
+import { useToast } from '../../hooks/useToast'
+import Button from '../Button'
+import SegmentedControl from '../SegmentedControl'
+import TextField from '../TextField'
 
 type BuyMode = 'amount' | 'shares'
 
@@ -14,13 +22,10 @@ interface BuyModalContentProps {
   currentPrice: number | null
 }
 
-function parseNumberInput(value: string) {
-  const normalizedValue = value.replace(',', '.').trim()
-  if (!normalizedValue) return 0
-
-  const parsedValue = Number(normalizedValue)
-  return Number.isFinite(parsedValue) ? parsedValue : Number.NaN
-}
+const BUY_MODE_OPTIONS: Array<{ value: BuyMode; label: string }> = [
+  { value: 'amount', label: 'Amount' },
+  { value: 'shares', label: 'Shares' },
+]
 
 export default function BuyModalContent({
   onClose,
@@ -38,15 +43,12 @@ export default function BuyModalContent({
 
   const parsedValue = parseNumberInput(value)
   const availableCash = portfolio?.cash ?? 0
-  const quantity = useMemo(() => {
-    if (!Number.isFinite(parsedValue) || parsedValue <= 0) return 0
-    if (mode === 'shares') return parsedValue
-    if (!currentPrice) return 0
+  const quantity = useMemo(
+    () => getQuantityFromTradeInput({ mode, parsedValue, currentPrice }),
+    [currentPrice, mode, parsedValue],
+  )
 
-    return parsedValue / currentPrice
-  }, [currentPrice, mode, parsedValue])
-
-  const orderAmount = currentPrice ? quantity * currentPrice : 0
+  const orderAmount = getOrderAmount(quantity, currentPrice)
   const canSubmit =
     Boolean(symbol) &&
     Boolean(currentPrice) &&
@@ -122,47 +124,28 @@ export default function BuyModalContent({
           <h2 className="text-h2 text-text">Invest in {stockLabel}</h2>
           <p className="mt-1 text-small text-muted">{formatMoney(availableCash)} available</p>
         </div>
-        <button
-          type="button"
-          onClick={onClose}
-          className="rounded-lg border border-border p-2 text-text hover:bg-surface-hover hover:cursor-pointer"
-          aria-label="Close buy modal"
-        >
+        <Button variant="secondary" size="icon" onClick={onClose} aria-label="Close buy modal">
           <X size={20} strokeWidth={1.5} />
-        </button>
+        </Button>
       </div>
 
-      <div className="flex gap-3 pt-7.5 pb-40">
-        <button
-          type="button"
-          onClick={() => handleModeChange('amount')}
-          className={`rounded-[100px] px-7 py-3 text-body hover:cursor-pointer ${
-            mode === 'amount' ? 'bg-text text-surface' : 'border border-border bg-surface text-text'
-          }`}
-        >
-          Amount
-        </button>
-        <button
-          type="button"
-          onClick={() => handleModeChange('shares')}
-          className={`rounded-[100px] px-7 py-3 text-body hover:cursor-pointer ${
-            mode === 'shares' ? 'bg-text text-surface' : 'border border-border bg-surface text-text'
-          }`}
-        >
-          Shares
-        </button>
+      <div className="pt-7.5 pb-40">
+        <SegmentedControl
+          value={mode}
+          options={BUY_MODE_OPTIONS}
+          onChange={(value) => handleModeChange(value as BuyMode)}
+        />
       </div>
 
       <div className="min-h-38 space-y-3">
-        <label className="block text-body text-text" htmlFor="buy-value">
-          {mode === 'amount' ? 'Amount' : 'Shares'}
-        </label>
-        <input
+        <TextField
           id="buy-value"
+          label={mode === 'amount' ? 'Amount' : 'Shares'}
           value={value}
           onChange={(event) => setValue(event.target.value)}
           inputMode="decimal"
-          className="mx-auto h-13 w-4/5 rounded-lg border border-border bg-surface px-5 text-body text-text outline-none focus:border-text"
+          labelClassName="text-body text-text"
+          inputClassName="mx-auto w-4/5"
           placeholder={
             mode === 'amount' ? (currentPrice ? formatMoney(currentPrice) : 'Amount') : '1'
           }
@@ -184,21 +167,13 @@ export default function BuyModalContent({
       {error && <p className="text-small text-bearish">{error}</p>}
 
       <div className="flex justify-end pt-15">
-        <button
-          type="button"
+        <Button
           onClick={handleSubmit}
           disabled={!canSubmit}
-          className="flex items-center gap-2 rounded-lg bg-text px-25 py-3 font-bold text-surface disabled:cursor-not-allowed disabled:opacity-60 hover:cursor-pointer"
+          trailing={!buyStock.isPending && <ChevronRight size={18} strokeWidth={2} />}
         >
-          {buyStock.isPending ? (
-            'Buying...'
-          ) : (
-            <>
-              Buy
-              <ChevronRight size={18} strokeWidth={2} />
-            </>
-          )}
-        </button>
+          {buyStock.isPending ? 'Buying...' : 'Buy'}
+        </Button>
       </div>
     </div>
   )

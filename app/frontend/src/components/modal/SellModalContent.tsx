@@ -3,7 +3,15 @@ import { ChevronRight, X } from 'lucide-react'
 import { usePortfolio } from '../../hooks/usePortfolio'
 import { useTradeStock } from '../../hooks/useTradeStock'
 import { formatInputNumber, formatMoney, formatShares } from '../../utils/format'
-import { useToast } from '../../contexts/ToastContext'
+import {
+  getOrderAmount,
+  getQuantityFromTradeInput,
+  parseNumberInput,
+} from '../../utils/trade-order'
+import { useToast } from '../../hooks/useToast'
+import Button from '../Button'
+import SegmentedControl from '../SegmentedControl'
+import TextField from '../TextField'
 
 type SellMode = 'amount' | 'shares' | 'percentage'
 type SellPercentage = 0.25 | 0.5 | 1
@@ -22,13 +30,11 @@ const PERCENTAGE_OPTIONS: { label: string; value: SellPercentage }[] = [
   { label: '100%', value: 1 },
 ]
 
-function parseNumberInput(value: string) {
-  const normalizedValue = value.replace(',', '.').trim()
-  if (!normalizedValue) return 0
-
-  const parsedValue = Number(normalizedValue)
-  return Number.isFinite(parsedValue) ? parsedValue : Number.NaN
-}
+const SELL_MODE_OPTIONS: Array<{ value: SellMode; label: string }> = [
+  { value: 'amount', label: 'Amount' },
+  { value: 'shares', label: 'Shares' },
+  { value: 'percentage', label: 'Percentage' },
+]
 
 export default function SellModalContent({
   onClose,
@@ -64,14 +70,10 @@ export default function SellModalContent({
       return ownedShares * selectedPercentage
     }
 
-    if (!Number.isFinite(parsedValue) || parsedValue <= 0) return 0
-    if (mode === 'shares') return parsedValue
-    if (!currentPrice) return 0
-
-    return parsedValue / currentPrice
+    return getQuantityFromTradeInput({ mode, parsedValue, currentPrice })
   }, [currentPrice, customPercentage, mode, ownedShares, parsedValue, percentage])
 
-  const orderAmount = currentPrice ? quantity * currentPrice : 0
+  const orderAmount = getOrderAmount(quantity, currentPrice)
   const canSubmit =
     Boolean(symbol) &&
     Boolean(holding) &&
@@ -172,46 +174,17 @@ export default function SellModalContent({
           <h2 className="text-h2 text-text">Sell {stockLabel}</h2>
           <p className="mt-1 text-small text-muted">{formatShares(ownedShares)} shares held</p>
         </div>
-        <button
-          type="button"
-          onClick={onClose}
-          className="rounded-lg border border-border p-2 text-text hover:bg-surface-hover hover:cursor-pointer"
-          aria-label="Close sell modal"
-        >
+        <Button variant="secondary" size="icon" onClick={onClose} aria-label="Close sell modal">
           <X size={20} strokeWidth={1.5} />
-        </button>
+        </Button>
       </div>
 
-      <div className="flex flex-wrap gap-3 pt-7.5 pb-40">
-        <button
-          type="button"
-          onClick={() => handleModeChange('amount')}
-          className={`rounded-[100px] px-7 py-3 text-body hover:cursor-pointer ${
-            mode === 'amount' ? 'bg-text text-surface' : 'border border-border bg-surface text-text'
-          }`}
-        >
-          Amount
-        </button>
-        <button
-          type="button"
-          onClick={() => handleModeChange('shares')}
-          className={`rounded-[100px] px-7 py-3 text-body hover:cursor-pointer ${
-            mode === 'shares' ? 'bg-text text-surface' : 'border border-border bg-surface text-text'
-          }`}
-        >
-          Shares
-        </button>
-        <button
-          type="button"
-          onClick={() => handleModeChange('percentage')}
-          className={`rounded-[100px] px-7 py-3 text-body hover:cursor-pointer ${
-            mode === 'percentage'
-              ? 'bg-text text-surface'
-              : 'border border-border bg-surface text-text'
-          }`}
-        >
-          Percentage
-        </button>
+      <div className="pt-7.5 pb-40">
+        <SegmentedControl
+          value={mode}
+          options={SELL_MODE_OPTIONS}
+          onChange={(value) => handleModeChange(value as SellMode)}
+        />
       </div>
 
       {mode === 'percentage' ? (
@@ -219,37 +192,38 @@ export default function SellModalContent({
           <label className="block text-body text-text">Percentage</label>
           <div className="grid grid-cols-4 gap-3">
             {PERCENTAGE_OPTIONS.map((option) => (
-              <button
+              <Button
                 key={option.label}
-                type="button"
+                variant={percentage === option.value ? 'primary' : 'secondary'}
+                size="none"
                 onClick={() => handlePercentageChange(option.value)}
-                className={`h-13 rounded-lg border px-4 text-body hover:cursor-pointer ${
-                  percentage === option.value
-                    ? 'border-text bg-text text-surface'
-                    : 'border-border bg-surface text-text'
-                }`}
+                className="h-13 rounded-lg px-4 text-body font-normal"
               >
                 {option.label}
-              </button>
+              </Button>
             ))}
             {percentage === 'custom' ? (
-              <input
+              <TextField
+                label="Custom percentage"
                 value={customPercentage}
                 onChange={(event) => setCustomPercentage(event.target.value)}
                 inputMode="decimal"
                 autoFocus
-                className="h-13 rounded-lg border border-text bg-surface px-4 text-center text-body text-text outline-none"
+                containerClassName="contents"
+                labelClassName="sr-only"
+                inputClassName="border-text px-4 text-center"
                 placeholder="75%"
                 aria-label="Custom sell percentage"
               />
             ) : (
-              <button
-                type="button"
+              <Button
+                variant="secondary"
+                size="none"
                 onClick={handleCustomPercentage}
-                className="h-13 rounded-lg border border-border bg-surface px-4 text-body text-text hover:cursor-pointer"
+                className="h-13 rounded-lg px-4 text-body font-normal"
               >
                 Custom
-              </button>
+              </Button>
             )}
           </div>
           <div className="space-y-1">
@@ -261,15 +235,14 @@ export default function SellModalContent({
         </div>
       ) : (
         <div className="min-h-38 space-y-3">
-          <label className="block text-body text-text" htmlFor="sell-value">
-            {mode === 'amount' ? 'Amount' : 'Shares'}
-          </label>
-          <input
+          <TextField
             id="sell-value"
+            label={mode === 'amount' ? 'Amount' : 'Shares'}
             value={value}
             onChange={(event) => setValue(event.target.value)}
             inputMode="decimal"
-            className="mx-auto h-13 w-4/5 rounded-lg border border-border bg-surface px-5 text-body text-text outline-none focus:border-text"
+            labelClassName="text-body text-text"
+            inputClassName="mx-auto w-4/5"
             placeholder={
               mode === 'amount' ? (currentPrice ? formatMoney(currentPrice) : 'Amount') : '1'
             }
@@ -292,21 +265,13 @@ export default function SellModalContent({
       {error && <p className="text-small text-bearish">{error}</p>}
 
       <div className="flex justify-end pt-15">
-        <button
-          type="button"
+        <Button
           onClick={handleSubmit}
           disabled={!canSubmit}
-          className="flex items-center gap-2 rounded-lg bg-text px-25 py-3 font-bold text-surface disabled:cursor-not-allowed disabled:opacity-60 hover:cursor-pointer"
+          trailing={!sellStock.isPending && <ChevronRight size={18} strokeWidth={2} />}
         >
-          {sellStock.isPending ? (
-            'Selling...'
-          ) : (
-            <>
-              Sell
-              <ChevronRight size={18} strokeWidth={2} />
-            </>
-          )}
-        </button>
+          {sellStock.isPending ? 'Selling...' : 'Sell'}
+        </Button>
       </div>
     </div>
   )

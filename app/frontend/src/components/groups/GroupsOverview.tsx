@@ -6,6 +6,7 @@ import PageTitle from '../PageTitle'
 import GroupDetailsModal from './GroupDetailsModal'
 import GroupOverviewCard, { GroupCardSkeleton } from './GroupOverviewCard'
 import NewGroupModal from './NewGroupModal'
+import Button from '../Button'
 
 export default function GroupsOverview() {
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -16,14 +17,14 @@ export default function GroupsOverview() {
     <>
       <div className="flex items-start justify-between gap-16 mb-40">
         <PageTitle title="Trading Groups" />
-        <button
-          type="button"
+        <Button
+          size="sm"
+          leading={<Plus size={16} strokeWidth={2.2} />}
           onClick={() => setIsModalOpen(true)}
-          className="mt-2 flex shrink-0 items-center gap-8 rounded-2xl bg-text px-15 py-2.5 text-small font-bold text-surface transition-opacity hover:opacity-90 hover:cursor-pointer"
+          className="mt-2 shrink-0 rounded-2xl py-2.5"
         >
-          <Plus size={16} strokeWidth={2.2} />
           New Group
-        </button>
+        </Button>
       </div>
       <div className="mx-auto flex w-full max-w-171.5 flex-col gap-25">
         <GroupList

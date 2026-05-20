@@ -4,6 +4,8 @@ import { useNavigate } from 'react-router-dom'
 import { useLogin } from '../hooks/useLogin'
 import { useRegister } from '../hooks/useRegister'
 import { useAuthStore } from '../stores/authStore'
+import Button from '../components/Button'
+import TextField from '../components/TextField'
 
 type AuthMode = 'login' | 'register'
 
@@ -55,68 +57,68 @@ export default function AuthPage() {
     <div className="flex min-h-screen items-center justify-center px-18 py-32">
       <div className="w-full max-w-sm">
         <div className="mb-15 flex gap-10">
-          <button type="button" onClick={() => setMode('login')} className="px-15 py-10">
+          <Button
+            variant={mode === 'login' ? 'primary' : 'ghost'}
+            size="none"
+            onClick={() => setMode('login')}
+            className="rounded-lg px-15 py-10"
+          >
             Login
-          </button>
-          <button type="button" onClick={() => setMode('register')} className="px-15 py-10">
+          </Button>
+          <Button
+            variant={mode === 'register' ? 'primary' : 'ghost'}
+            size="none"
+            onClick={() => setMode('register')}
+            className="rounded-lg px-15 py-10"
+          >
             Register
-          </button>
+          </Button>
         </div>
 
         <form className="space-y-15" onSubmit={handleSubmit}>
-          <label className="block space-y-8">
-            <span className="text-small text-muted">Username</span>
-            <input
-              required
-              value={mode === 'login' ? loginForm.username : registerForm.username}
-              onChange={(event) =>
-                mode === 'login'
-                  ? setLoginForm((current) => ({ ...current, username: event.target.value }))
-                  : setRegisterForm((current) => ({ ...current, username: event.target.value }))
-              }
-              className="w-full px-15 py-12 bg-surface border border-border"
-            />
-          </label>
+          <TextField
+            label="Username"
+            required
+            value={mode === 'login' ? loginForm.username : registerForm.username}
+            onChange={(event) =>
+              mode === 'login'
+                ? setLoginForm((current) => ({ ...current, username: event.target.value }))
+                : setRegisterForm((current) => ({ ...current, username: event.target.value }))
+            }
+            inputClassName="w-full px-15 py-12"
+          />
 
           {mode === 'register' && (
-            <label className="block space-y-8">
-              <span className="text-small text-muted">Email</span>
-              <input
-                required
-                type="email"
-                value={registerForm.email}
-                onChange={(event) =>
-                  setRegisterForm((current) => ({ ...current, email: event.target.value }))
-                }
-                className="w-full px-15 py-12 bg-surface border border-border"
-              />
-            </label>
+            <TextField
+              label="Email"
+              required
+              type="email"
+              value={registerForm.email}
+              onChange={(event) =>
+                setRegisterForm((current) => ({ ...current, email: event.target.value }))
+              }
+              inputClassName="w-full px-15 py-12"
+            />
           )}
 
-          <label className="block space-y-8">
-            <span className="text-small text-muted">Password</span>
-            <input
-              required
-              type="password"
-              value={mode === 'login' ? loginForm.password : registerForm.password}
-              onChange={(event) =>
-                mode === 'login'
-                  ? setLoginForm((current) => ({ ...current, password: event.target.value }))
-                  : setRegisterForm((current) => ({ ...current, password: event.target.value }))
-              }
-              className="w-full px-15 py-12 bg-surface border border-border"
-            />
-          </label>
+          <TextField
+            label="Password"
+            required
+            type="password"
+            value={mode === 'login' ? loginForm.password : registerForm.password}
+            onChange={(event) =>
+              mode === 'login'
+                ? setLoginForm((current) => ({ ...current, password: event.target.value }))
+                : setRegisterForm((current) => ({ ...current, password: event.target.value }))
+            }
+            inputClassName="w-full px-15 py-12"
+          />
 
           {errorMessage && <p className="text-small text-error">{errorMessage}</p>}
 
-          <button
-            type="submit"
-            disabled={isPending}
-            className="w-full px-15 py-12 disabled:opacity-60"
-          >
+          <Button type="submit" disabled={isPending} fullWidth className="px-15 py-12">
             {isPending ? 'Loading...' : mode === 'login' ? 'Sign in' : 'Create account'}
-          </button>
+          </Button>
         </form>
       </div>
     </div>

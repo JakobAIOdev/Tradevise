@@ -1,4 +1,5 @@
 import type { Stock } from '../../types'
+import { getTrendDirectionTextClass } from '../../utils/trend'
 import StockLogo from '../StockLogo'
 import { ChevronDown, ChevronUp, LoaderCircle } from 'lucide-react'
 
@@ -12,6 +13,7 @@ export default function DetailHeader({
   positiveChange,
 }: Stock) {
   const positive = positiveChange ?? change >= 0
+  const changeClass = getTrendDirectionTextClass(positive)
   const hasPrice = typeof price === 'number' && price > 0
 
   return (
@@ -39,13 +41,11 @@ export default function DetailHeader({
               )}
             </span>
             <div className="flex flex-row gap-5 lg:justify-end">
-              <span className={positive ? 'text-bullish text-body' : 'text-bearish text-body'}>
+              <span className={`${changeClass} text-body`}>
                 {positive ? '+ ' : '- '}
                 {typeof changeValue === 'number' ? Math.abs(changeValue).toFixed(2) : '0.00'} €
               </span>
-              <span
-                className={`flex items-center gap-0.5 text-body ${positive ? 'text-bullish' : 'text-bearish'}`}
-              >
+              <span className={`flex items-center gap-0.5 text-body ${changeClass}`}>
                 (
                 {positive ? (
                   <ChevronUp size={16} strokeWidth={2.5} />

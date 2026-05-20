@@ -1,6 +1,5 @@
-import { createContext, useContext, useRef, useState } from 'react'
-
-export type MessageType = 'error' | 'success'
+import { useRef, useState, type ReactNode } from 'react'
+import { ToastContext, type MessageType } from './toast'
 
 type ToastState = {
   message: string
@@ -8,16 +7,7 @@ type ToastState = {
   isVisible: boolean
 }
 
-type ToastContextType = {
-  showMessage: (message: string, type?: MessageType, duration?: number) => void
-  isVisible: boolean
-  type: MessageType
-  message: string
-}
-
-const ToastContext = createContext<ToastContextType | undefined>(undefined)
-
-export function ToastProvider({ children }: { children: React.ReactNode }) {
+export function ToastProvider({ children }: { children: ReactNode }) {
   const [toast, setToast] = useState<ToastState>({
     message: '',
     type: 'success',
@@ -57,14 +47,4 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       {children}
     </ToastContext.Provider>
   )
-}
-
-export function useToast() {
-  const context = useContext(ToastContext)
-
-  if (!context) {
-    throw new Error('useToast must be used within a ToastProvider')
-  }
-
-  return context
 }

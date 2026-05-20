@@ -20,8 +20,3 @@ export function getLeaderboardDisplayValue(entry: LeaderboardEntry, metric: Lead
 
   return formatMoney(entry.totalValue)
 }
-
-export function getSeasonGainTextClass(seasonGainPercent: number | null) {
-  if (seasonGainPercent === null) return 'text-muted'
-  return seasonGainPercent >= 0 ? 'text-bullish' : 'text-bearish'
-}

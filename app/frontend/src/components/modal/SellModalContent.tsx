@@ -5,6 +5,8 @@ import { useTradeStock } from '../../hooks/useTradeStock'
 import { formatInputNumber, formatMoney, formatShares } from '../../utils/format'
 import { useToast } from '../../contexts/ToastContext'
 import Button from '../Button'
+import SegmentedControl from '../SegmentedControl'
+import TextField from '../TextField'
 
 type SellMode = 'amount' | 'shares' | 'percentage'
 type SellPercentage = 0.25 | 0.5 | 1
@@ -21,6 +23,12 @@ const PERCENTAGE_OPTIONS: { label: string; value: SellPercentage }[] = [
   { label: '25%', value: 0.25 },
   { label: '50%', value: 0.5 },
   { label: '100%', value: 1 },
+]
+
+const SELL_MODE_OPTIONS: Array<{ value: SellMode; label: string }> = [
+  { value: 'amount', label: 'Amount' },
+  { value: 'shares', label: 'Shares' },
+  { value: 'percentage', label: 'Percentage' },
 ]
 
 function parseNumberInput(value: string) {
@@ -178,31 +186,12 @@ export default function SellModalContent({
         </Button>
       </div>
 
-      <div className="flex flex-wrap gap-3 pt-7.5 pb-40">
-        <Button
-          variant={mode === 'amount' ? 'primary' : 'secondary'}
-          size="none"
-          className="rounded-[100px] px-7 py-3 text-body font-normal"
-          onClick={() => handleModeChange('amount')}
-        >
-          Amount
-        </Button>
-        <Button
-          variant={mode === 'shares' ? 'primary' : 'secondary'}
-          size="none"
-          className="rounded-[100px] px-7 py-3 text-body font-normal"
-          onClick={() => handleModeChange('shares')}
-        >
-          Shares
-        </Button>
-        <Button
-          variant={mode === 'percentage' ? 'primary' : 'secondary'}
-          size="none"
-          className="rounded-[100px] px-7 py-3 text-body font-normal"
-          onClick={() => handleModeChange('percentage')}
-        >
-          Percentage
-        </Button>
+      <div className="pt-7.5 pb-40">
+        <SegmentedControl
+          value={mode}
+          options={SELL_MODE_OPTIONS}
+          onChange={(value) => handleModeChange(value as SellMode)}
+        />
       </div>
 
       {mode === 'percentage' ? (
@@ -221,12 +210,15 @@ export default function SellModalContent({
               </Button>
             ))}
             {percentage === 'custom' ? (
-              <input
+              <TextField
+                label="Custom percentage"
                 value={customPercentage}
                 onChange={(event) => setCustomPercentage(event.target.value)}
                 inputMode="decimal"
                 autoFocus
-                className="h-13 rounded-lg border border-text bg-surface px-4 text-center text-body text-text outline-none"
+                containerClassName="contents"
+                labelClassName="sr-only"
+                inputClassName="border-text px-4 text-center"
                 placeholder="75%"
                 aria-label="Custom sell percentage"
               />
@@ -250,15 +242,14 @@ export default function SellModalContent({
         </div>
       ) : (
         <div className="min-h-38 space-y-3">
-          <label className="block text-body text-text" htmlFor="sell-value">
-            {mode === 'amount' ? 'Amount' : 'Shares'}
-          </label>
-          <input
+          <TextField
             id="sell-value"
+            label={mode === 'amount' ? 'Amount' : 'Shares'}
             value={value}
             onChange={(event) => setValue(event.target.value)}
             inputMode="decimal"
-            className="mx-auto h-13 w-4/5 rounded-lg border border-border bg-surface px-5 text-body text-text outline-none focus:border-text"
+            labelClassName="text-body text-text"
+            inputClassName="mx-auto w-4/5"
             placeholder={
               mode === 'amount' ? (currentPrice ? formatMoney(currentPrice) : 'Amount') : '1'
             }

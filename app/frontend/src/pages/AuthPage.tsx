@@ -5,6 +5,7 @@ import { useLogin } from '../hooks/useLogin'
 import { useRegister } from '../hooks/useRegister'
 import { useAuthStore } from '../stores/authStore'
 import Button from '../components/Button'
+import TextField from '../components/TextField'
 
 type AuthMode = 'login' | 'register'
 
@@ -75,49 +76,43 @@ export default function AuthPage() {
         </div>
 
         <form className="space-y-15" onSubmit={handleSubmit}>
-          <label className="block space-y-8">
-            <span className="text-small text-muted">Username</span>
-            <input
-              required
-              value={mode === 'login' ? loginForm.username : registerForm.username}
-              onChange={(event) =>
-                mode === 'login'
-                  ? setLoginForm((current) => ({ ...current, username: event.target.value }))
-                  : setRegisterForm((current) => ({ ...current, username: event.target.value }))
-              }
-              className="w-full px-15 py-12 bg-surface border border-border"
-            />
-          </label>
+          <TextField
+            label="Username"
+            required
+            value={mode === 'login' ? loginForm.username : registerForm.username}
+            onChange={(event) =>
+              mode === 'login'
+                ? setLoginForm((current) => ({ ...current, username: event.target.value }))
+                : setRegisterForm((current) => ({ ...current, username: event.target.value }))
+            }
+            inputClassName="w-full px-15 py-12"
+          />
 
           {mode === 'register' && (
-            <label className="block space-y-8">
-              <span className="text-small text-muted">Email</span>
-              <input
-                required
-                type="email"
-                value={registerForm.email}
-                onChange={(event) =>
-                  setRegisterForm((current) => ({ ...current, email: event.target.value }))
-                }
-                className="w-full px-15 py-12 bg-surface border border-border"
-              />
-            </label>
+            <TextField
+              label="Email"
+              required
+              type="email"
+              value={registerForm.email}
+              onChange={(event) =>
+                setRegisterForm((current) => ({ ...current, email: event.target.value }))
+              }
+              inputClassName="w-full px-15 py-12"
+            />
           )}
 
-          <label className="block space-y-8">
-            <span className="text-small text-muted">Password</span>
-            <input
-              required
-              type="password"
-              value={mode === 'login' ? loginForm.password : registerForm.password}
-              onChange={(event) =>
-                mode === 'login'
-                  ? setLoginForm((current) => ({ ...current, password: event.target.value }))
-                  : setRegisterForm((current) => ({ ...current, password: event.target.value }))
-              }
-              className="w-full px-15 py-12 bg-surface border border-border"
-            />
-          </label>
+          <TextField
+            label="Password"
+            required
+            type="password"
+            value={mode === 'login' ? loginForm.password : registerForm.password}
+            onChange={(event) =>
+              mode === 'login'
+                ? setLoginForm((current) => ({ ...current, password: event.target.value }))
+                : setRegisterForm((current) => ({ ...current, password: event.target.value }))
+            }
+            inputClassName="w-full px-15 py-12"
+          />
 
           {errorMessage && <p className="text-small text-error">{errorMessage}</p>}
 

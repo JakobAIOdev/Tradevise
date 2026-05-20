@@ -5,6 +5,8 @@ import { useTradeStock } from '../../hooks/useTradeStock'
 import { formatInputNumber, formatMoney, formatShares } from '../../utils/format'
 import { useToast } from '../../contexts/ToastContext'
 import Button from '../Button'
+import SegmentedControl from '../SegmentedControl'
+import TextField from '../TextField'
 
 type BuyMode = 'amount' | 'shares'
 
@@ -14,6 +16,11 @@ interface BuyModalContentProps {
   name?: string
   currentPrice: number | null
 }
+
+const BUY_MODE_OPTIONS: Array<{ value: BuyMode; label: string }> = [
+  { value: 'amount', label: 'Amount' },
+  { value: 'shares', label: 'Shares' },
+]
 
 function parseNumberInput(value: string) {
   const normalizedValue = value.replace(',', '.').trim()
@@ -128,35 +135,23 @@ export default function BuyModalContent({
         </Button>
       </div>
 
-      <div className="flex gap-3 pt-7.5 pb-40">
-        <Button
-          variant={mode === 'amount' ? 'primary' : 'secondary'}
-          size="none"
-          className="rounded-[100px] px-7 py-3 text-body font-normal"
-          onClick={() => handleModeChange('amount')}
-        >
-          Amount
-        </Button>
-        <Button
-          variant={mode === 'shares' ? 'primary' : 'secondary'}
-          size="none"
-          className="rounded-[100px] px-7 py-3 text-body font-normal"
-          onClick={() => handleModeChange('shares')}
-        >
-          Shares
-        </Button>
+      <div className="pt-7.5 pb-40">
+        <SegmentedControl
+          value={mode}
+          options={BUY_MODE_OPTIONS}
+          onChange={(value) => handleModeChange(value as BuyMode)}
+        />
       </div>
 
       <div className="min-h-38 space-y-3">
-        <label className="block text-body text-text" htmlFor="buy-value">
-          {mode === 'amount' ? 'Amount' : 'Shares'}
-        </label>
-        <input
+        <TextField
           id="buy-value"
+          label={mode === 'amount' ? 'Amount' : 'Shares'}
           value={value}
           onChange={(event) => setValue(event.target.value)}
           inputMode="decimal"
-          className="mx-auto h-13 w-4/5 rounded-lg border border-border bg-surface px-5 text-body text-text outline-none focus:border-text"
+          labelClassName="text-body text-text"
+          inputClassName="mx-auto w-4/5"
           placeholder={
             mode === 'amount' ? (currentPrice ? formatMoney(currentPrice) : 'Amount') : '1'
           }

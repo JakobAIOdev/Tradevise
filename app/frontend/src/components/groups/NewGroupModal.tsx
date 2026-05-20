@@ -1,9 +1,11 @@
 import { X } from 'lucide-react'
-import { useState, type FormEvent } from 'react'
+import { useState, type SubmitEventHandler } from 'react'
 import { useCreateGroup, useJoinGroup } from '../../hooks/useGroups'
 import { useToast } from '../../contexts/ToastContext'
 import Modal from '../modal/Modal'
 import Button from '../Button'
+import SegmentedControl from '../SegmentedControl'
+import TextField from '../TextField'
 
 type GroupModalMode = 'create' | 'join'
 
@@ -33,7 +35,7 @@ export default function NewGroupModal({ isOpen, onClose, onGroupSelected }: NewG
   const { showMessage } = useToast()
   const isPending = createGroup.isPending || joinGroup.isPending
 
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit: SubmitEventHandler<HTMLFormElement> = async (event) => {
     event.preventDefault()
 
     try {
@@ -99,54 +101,39 @@ function GroupModeToggle({
   onChange: (mode: GroupModalMode) => void
 }) {
   return (
-    <div className="grid grid-cols-2 gap-1.5 rounded-[20px] bg-surface-hover p-1.5">
-      {GROUP_MODAL_MODES.map((option) => (
-        <Button
-          key={option.value}
-          variant={mode === option.value ? 'surface' : 'ghost'}
-          size="none"
-          onClick={() => onChange(option.value)}
-          className={`rounded-[14px] py-3 text-body ${
-            mode === option.value ? 'font-bold' : 'font-normal text-muted hover:bg-surface/60'
-          }`}
-        >
-          {option.label}
-        </Button>
-      ))}
-    </div>
+    <SegmentedControl
+      value={mode}
+      options={GROUP_MODAL_MODES}
+      onChange={(value) => onChange(value as GroupModalMode)}
+    />
   )
 }
 
 function GroupNameField({ value, onChange }: { value: string; onChange: (value: string) => void }) {
   return (
-    <label className="flex flex-col gap-6">
-      <span className="text-small text-muted">Group name</span>
-      <input
-        className="h-13 rounded-lg border border-border bg-surface px-5 text-body text-text outline-none focus:border-text"
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        placeholder="Klasse 4A"
-        minLength={2}
-        maxLength={40}
-        required
-      />
-    </label>
+    <TextField
+      label="Group name"
+      value={value}
+      onChange={(event) => onChange(event.target.value)}
+      placeholder="Klasse 4A"
+      minLength={2}
+      maxLength={40}
+      required
+    />
   )
 }
 
 function GroupCodeField({ value, onChange }: { value: string; onChange: (value: string) => void }) {
   return (
-    <label className="flex flex-col gap-6">
-      <span className="text-small text-muted">Group code</span>
-      <input
-        className="h-13 rounded-lg border border-border bg-surface px-5 text-body uppercase tracking-widest text-text outline-none focus:border-text"
-        value={value}
-        onChange={(event) => onChange(event.target.value.toUpperCase())}
-        placeholder="ABC123"
-        minLength={4}
-        maxLength={12}
-        required
-      />
-    </label>
+    <TextField
+      label="Group code"
+      value={value}
+      onChange={(event) => onChange(event.target.value.toUpperCase())}
+      placeholder="ABC123"
+      minLength={4}
+      maxLength={12}
+      inputClassName="uppercase tracking-widest"
+      required
+    />
   )
 }

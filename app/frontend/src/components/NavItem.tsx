@@ -47,7 +47,7 @@ export default function NavItem({
 
       {collapsed && (
         <span
-          className="absolute left-full ml-10 px-10 py-8 bg-surface border border-border
+          className="absolute left-full z-50 ml-10 px-10 py-8 bg-surface border border-border
           rounded-lg text-text text-small whitespace-nowrap opacity-0 group-hover:opacity-100
           pointer-events-none transition-[opacity,background-color,border-color,color] duration-150 ease-out"
         >

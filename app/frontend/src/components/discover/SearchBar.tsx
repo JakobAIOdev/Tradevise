@@ -97,7 +97,7 @@ export function SearchBar({ className = '', size = 'default' }: SearchBarProps) 
   const isCompact = size === 'compact'
 
   return (
-    <div ref={containerRef} className={`relative z-20 min-w-0 ${className}`}>
+    <div ref={containerRef} className={`relative z-20 min-w-0 ${isOpen ? 'z-40' : ''} ${className}`}>
       <div
         className={`
         flex items-center gap-8 rounded-xl border bg-surface
@@ -161,7 +161,7 @@ export function SearchBar({ className = '', size = 'default' }: SearchBarProps) 
       {showDropdown && (
         <ul
           role="listbox"
-          className="mt-8 max-h-[320px] w-full overflow-y-auto rounded-xl border border-border bg-surface p-8 m-0 list-none transition-[background-color,border-color] duration-200 ease-out absolute"
+          className="absolute left-0 right-0 top-full z-50 mt-8 max-h-[320px] w-full overflow-y-auto rounded-xl border border-border bg-surface p-8 m-0 list-none transition-[background-color,border-color] duration-200 ease-out"
         >
           {isError ? (
             <li className="px-15 py-15 text-center text-small text-muted">Search not available.</li>

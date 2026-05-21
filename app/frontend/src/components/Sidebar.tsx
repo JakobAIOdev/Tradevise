@@ -32,7 +32,7 @@ export default function Sidebar({ collapsed, mobileOpen, onNavigate }: SidebarPr
       transition-[transform,width,padding,background-color,border-color] duration-200 ease-out
       ${mobileOpen ? 'translate-x-0' : '-translate-x-full'}
       w-[240px] px-15
-      md:static md:z-auto md:shrink-0 md:translate-x-0 md:shadow-none
+      md:static md:z-50 md:shrink-0 md:translate-x-0 md:shadow-none
       ${collapsed ? 'md:w-64 md:px-10' : 'md:w-[240px] md:px-15'}`}
       >
         <p className="font-bold text-[32px] tracking-[-1%] text-text text-center justify-center transition-colors duration-200 ease-out">

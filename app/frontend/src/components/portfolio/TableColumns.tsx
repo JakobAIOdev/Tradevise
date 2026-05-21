@@ -1,6 +1,6 @@
 import { createColumnHelper } from '@tanstack/react-table'
 import { Link } from 'react-router-dom'
-import StockLogo from '../StockLogo'
+import AssetIdentity from '../AssetIdentity'
 import {
   formatMoney,
   formatShares,
@@ -41,15 +41,13 @@ export const columns = [
           state={buildHoldingLinkState(item)}
           className="group flex items-center gap-4"
         >
-          <StockLogo src={item.logoUrl ?? ''} ticker={item.symbol} size={48} />
-          <div className="min-w-0">
-            <div className="text-body text-text truncate transition-colors group-hover:text-muted">
-              {item.displayName}
-            </div>
-            <div className="text-small text-muted">
-              {item.symbol} • {formatShares(item.quantity)} shares
-            </div>
-          </div>
+          <AssetIdentity
+            symbol={item.symbol}
+            name={item.displayName}
+            logoUrl={item.logoUrl}
+            detail={`${item.symbol} • ${formatShares(item.quantity)} shares`}
+            nameClassName="text-body text-text transition-colors group-hover:text-muted"
+          />
         </Link>
       )
     },

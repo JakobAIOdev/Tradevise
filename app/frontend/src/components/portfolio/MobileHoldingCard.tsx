@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import StockLogo from '../StockLogo'
+import AssetIdentity from '../AssetIdentity'
 import { buildHoldingLinkState } from './holdingLinkState'
 import type { PortfolioTableRow } from './TableColumns'
 import {
@@ -26,13 +26,12 @@ export default function MobileHoldingCard({ item }: MobileHoldingCardProps) {
       className="block p-18 transition-colors hover:bg-surface-hover"
     >
       <div className="flex items-center gap-4">
-        <StockLogo src={item.logoUrl ?? ''} ticker={item.symbol} size={48} />
-        <div className="min-w-0">
-          <div className="text-body text-text truncate">{item.displayName}</div>
-          <div className="text-small text-muted">
-            {item.symbol} • {formatShares(item.quantity)} shares
-          </div>
-        </div>
+        <AssetIdentity
+          symbol={item.symbol}
+          name={item.displayName}
+          logoUrl={item.logoUrl}
+          detail={`${item.symbol} • ${formatShares(item.quantity)} shares`}
+        />
       </div>
       <div className="mt-18 grid grid-cols-2 gap-x-12 gap-y-15">
         <HoldingMetric label="Price" value={formatMoney(item.currentPrice)} />

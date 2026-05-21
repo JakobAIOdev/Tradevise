@@ -20,6 +20,7 @@ import { useWatchlistStocks } from '../hooks/useWatchlistStocks'
 import { DISCOVER_STOCKS_QUERY_KEY } from '../hooks/useDiscoverStocks'
 import FavoriteButton from '../components/watchlist/FavoriteButton'
 import Card, { CardTitle } from '../components/Card'
+import { buildStockLogoUrl } from '../utils/stocks'
 
 type StockDetailLocationState = {
   stock?: Stock
@@ -92,19 +93,24 @@ export default function StockDetailPage() {
     staleTime: Infinity,
   })
 
+  const headerStock: Stock = {
+    ...stock,
+    name: stock.name === ticker ? (statistics?.name?.trim() ?? stock.name) : stock.name,
+    logo: stock.logo || buildStockLogoUrl(ticker),
+  }
   const displayStock = getRangePerformance(
-    stock,
+    headerStock,
     chart?.points.map((point) => point.price),
   )
 
   useEffect(() => {
     const previousTitle = document.title
-    document.title = `Tradevise | ${stock.name}`
+    document.title = `Tradevise | ${headerStock.name}`
 
     return () => {
       document.title = previousTitle
     }
-  }, [stock.name, stock.ticker])
+  }, [headerStock.name])
 
   async function toggleFavorite() {
     if (isWatchlistUpdating) return
@@ -112,12 +118,12 @@ export default function StockDetailPage() {
     try {
       if (isFavorite) {
         await removeFromWatchlist(ticker)
-        showMessage(`${stock.name} removed from watchlist`, 'success')
+        showMessage(`${headerStock.name} removed from watchlist`, 'success')
         return
       }
 
       await addToWatchlist(ticker)
-      showMessage(`${stock.name} added to watchlist`, 'success')
+      showMessage(`${headerStock.name} added to watchlist`, 'success')
     } catch {
       showMessage('Failed to update watchlist', 'error')
     }
@@ -143,12 +149,16 @@ export default function StockDetailPage() {
           <div className="flex w-full gap-3 pt-4 xl:mt-auto">
             <ActionButton
               label="Buy"
-              action={() => open('buy', { symbol: ticker, name: stock.name, price: stock.price })}
+              action={() =>
+                open('buy', { symbol: ticker, name: headerStock.name, price: headerStock.price })
+              }
             />
             <ActionButton
               label="Sell"
               disabled={!holding}
-              action={() => open('sell', { symbol: ticker, name: stock.name, price: stock.price })}
+              action={() =>
+                open('sell', { symbol: ticker, name: headerStock.name, price: headerStock.price })
+              }
             />
           </div>
         </div>
@@ -163,12 +173,12 @@ export default function StockDetailPage() {
             <CardTitle
               trailing={<ExternalLink size={20} strokeWidth={1.5} className="text-muted" />}
             >
-              About {stock.name}
+              About {headerStock.name}
             </CardTitle>
           }
         >
           <p className="text-muted text-small mt-6">
-            {stock.name} {stock.ticker}.
+            {headerStock.name} {headerStock.ticker}.
           </p>
         </Card>
       </div>

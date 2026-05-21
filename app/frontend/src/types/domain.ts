@@ -61,6 +61,27 @@ export type Portfolio = {
   todayBaselineValue: number
 }
 
+export type TradeType = 'BUY' | 'SELL'
+
+export type PortfolioTransaction = {
+  id: string
+  symbol: string
+  type: TradeType
+  quantity: number
+  price: number
+  total: number
+  realizedProfitLoss?: number | null
+  realizedProfitLossPercent?: number | null
+  createdAt: string
+}
+
+export type PortfolioTransactionsResponse = {
+  portfolioId: string
+  portfolioName: string
+  userId: string
+  transactions: PortfolioTransaction[]
+}
+
 export type PortfolioSummary = {
   id: string
   name: string

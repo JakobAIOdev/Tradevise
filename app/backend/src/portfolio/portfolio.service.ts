@@ -1,7 +1,14 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { BuyStockDto } from './dto/buy-stock.dto.js';
+import { CreatePortfolioDto } from './dto/create-portfolio.dto.js';
 import { SellStockDto } from './dto/sell-stock.dto.js';
+import { UpdatePortfolioDto } from './dto/update-portfolio.dto.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { RedisService } from '../redis/redis.service.js';
 
@@ -55,9 +62,38 @@ type PortfolioChartState = {
 type LeaderboardMetric = 'total' | 'seasonal';
 
 type LeaderboardBaseline = {
-  userId: string;
+  portfolioId: string;
   baselineDate: Date;
 };
+
+type PrismaClientLike = PrismaService | Prisma.TransactionClient;
+
+const portfolioSummarySelect = {
+  id: true,
+  name: true,
+  cash: true,
+  isDefault: true,
+  createdAt: true,
+  updatedAt: true,
+} satisfies Prisma.PortfolioSelect;
+
+type PortfolioSummaryRecord = Prisma.PortfolioGetPayload<{
+  select: typeof portfolioSummarySelect;
+}>;
+
+const portfolioListSelect = {
+  ...portfolioSummarySelect,
+  holdings: {
+    select: {
+      symbol: true,
+      quantity: true,
+    },
+  },
+} satisfies Prisma.PortfolioSelect;
+
+type PortfolioListRecord = Prisma.PortfolioGetPayload<{
+  select: typeof portfolioListSelect;
+}>;
 
 @Injectable()
 export class PortfolioService {
@@ -66,13 +102,166 @@ export class PortfolioService {
     private readonly redisService: RedisService,
   ) {}
 
-  async getPortfolio(userId: string) {
-    const portfolio = await this.ensurePortfolio(userId);
-    const holdings = await this.prisma.portfolioHolding.findMany({
+  async listPortfolios(userId: string) {
+    const activePortfolio = await this.ensureActivePortfolio(userId);
+    const portfolios = await this.prisma.portfolio.findMany({
       where: { userId },
+      orderBy: [{ isDefault: 'desc' }, { createdAt: 'asc' }],
+      select: portfolioListSelect,
+    });
+
+    const portfoliosWithValues = await Promise.all(
+      portfolios.map(async (portfolio) => ({
+        ...this.mapPortfolioSummary(portfolio),
+        totalValue: await this.calculateCurrentPortfolioValue(
+          portfolio.cash,
+          portfolio.holdings,
+        ),
+        isActive: portfolio.id === activePortfolio.id,
+      })),
+    );
+
+    return {
+      activePortfolioId: activePortfolio.id,
+      portfolios: portfoliosWithValues,
+    };
+  }
+
+  async createPortfolio(userId: string, dto: CreatePortfolioDto) {
+    const name = this.normalizePortfolioName(dto.name);
+    const existing = await this.prisma.portfolio.findUnique({
+      where: { userId_name: { userId, name } },
+      select: { id: true },
+    });
+
+    if (existing) {
+      throw new ConflictException('Portfolio name already exists');
+    }
+
+    const portfolio = await this.prisma.portfolio.create({
+      data: {
+        userId,
+        name,
+      },
+      select: portfolioSummarySelect,
+    });
+
+    if (dto.setActive ?? true) {
+      await this.prisma.user.update({
+        where: { id: userId },
+        data: { activePortfolioId: portfolio.id },
+      });
+    }
+
+    return {
+      ...this.mapPortfolioSummary(portfolio),
+      isActive: dto.setActive ?? true,
+    };
+  }
+
+  async setActivePortfolio(userId: string, portfolioId: string) {
+    const portfolio = await this.getOwnedPortfolio(userId, portfolioId);
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { activePortfolioId: portfolio.id },
+    });
+
+    return {
+      activePortfolioId: portfolio.id,
+    };
+  }
+
+  async updatePortfolio(
+    userId: string,
+    portfolioId: string,
+    dto: UpdatePortfolioDto,
+  ) {
+    await this.getOwnedPortfolio(userId, portfolioId);
+    const name = this.normalizePortfolioName(dto.name);
+    const existing = await this.prisma.portfolio.findFirst({
+      where: {
+        userId,
+        name,
+        id: { not: portfolioId },
+      },
+      select: { id: true },
+    });
+
+    if (existing) {
+      throw new ConflictException('Portfolio name already exists');
+    }
+
+    const portfolio = await this.prisma.portfolio.update({
+      where: { id: portfolioId },
+      data: { name },
+      select: portfolioSummarySelect,
+    });
+
+    return this.mapPortfolioSummary(portfolio);
+  }
+
+  async deletePortfolio(userId: string, portfolioId: string) {
+    await this.getOwnedPortfolio(userId, portfolioId);
+
+    return this.prisma.$transaction(async (tx) => {
+      const portfolios = await tx.portfolio.findMany({
+        where: { userId },
+        orderBy: [{ isDefault: 'desc' }, { createdAt: 'asc' }],
+        select: { id: true },
+      });
+
+      if (portfolios.length <= 1) {
+        throw new BadRequestException('You need at least one portfolio');
+      }
+
+      const nextPortfolio = portfolios.find(
+        (portfolio) => portfolio.id !== portfolioId,
+      );
+
+      if (!nextPortfolio) {
+        throw new BadRequestException('You need at least one portfolio');
+      }
+
+      await tx.portfolio.delete({
+        where: { id: portfolioId },
+      });
+
+      const user = await tx.user.findUnique({
+        where: { id: userId },
+        select: { activePortfolioId: true },
+      });
+
+      if (user?.activePortfolioId === portfolioId || !user?.activePortfolioId) {
+        await tx.user.update({
+          where: { id: userId },
+          data: { activePortfolioId: nextPortfolio.id },
+        });
+      }
+
+      return {
+        deletedPortfolioId: portfolioId,
+        activePortfolioId:
+          user?.activePortfolioId === portfolioId || !user?.activePortfolioId
+            ? nextPortfolio.id
+            : user.activePortfolioId,
+      };
+    });
+  }
+
+  async getActivePortfolioForUser(userId: string) {
+    return this.ensureActivePortfolio(userId);
+  }
+
+  async getPortfolio(userId: string) {
+    const portfolio = await this.ensureActivePortfolio(userId);
+    const holdings = await this.prisma.portfolioHolding.findMany({
+      where: { portfolioId: portfolio.id },
       orderBy: { symbol: 'asc' },
     });
-    const todayTransactions = await this.getTodayTransactionsBySymbol(userId);
+    const todayTransactions = await this.getTodayTransactionsBySymbol(
+      portfolio.id,
+    );
 
     const enrichedHoldings = await Promise.all(
       holdings.map(async (holding) => {
@@ -119,6 +308,8 @@ export class PortfolioService {
     const cash = this.toNumber(portfolio.cash);
 
     return {
+      portfolioId: portfolio.id,
+      portfolioName: portfolio.name,
       userId,
       cash,
       holdingsValue,
@@ -135,17 +326,17 @@ export class PortfolioService {
     rangeInput: string,
   ): Promise<PortfolioChartResponse> {
     const range = this.parsePortfolioChartRange(rangeInput);
-    const portfolio = await this.ensurePortfolio(userId);
+    const portfolio = await this.ensureActivePortfolio(userId);
     const { start, end, source } = this.getPortfolioChartWindow(range);
     const resolvedStart =
       range === 'ALL'
-        ? await this.resolveAllRangeStart(userId, portfolio.createdAt)
+        ? await this.resolveAllRangeStart(portfolio.id, portfolio.createdAt)
         : start;
     const timelineEnd =
       source === 'intraday' ? this.toIntradayChartDate(end) : end;
 
     const normalizedTransactions = await this.loadPortfolioChartTransactions(
-      userId,
+      portfolio.id,
       end,
       source,
     );
@@ -222,56 +413,60 @@ export class PortfolioService {
     return this.buildLeaderboard(userId, metricInput);
   }
 
-  async getLeaderboardForUsers(
+  async getLeaderboardForPortfolios(
     userId: string,
-    userIds: string[],
+    portfolioIds: string[],
     metricInput = 'total',
   ) {
     return this.buildLeaderboard(userId, metricInput, {
-      id: { in: userIds },
+      id: { in: portfolioIds },
     });
   }
 
-  async getLeaderboardForUsersSince(
+  async getLeaderboardForPortfoliosSince(
     userId: string,
     baselines: LeaderboardBaseline[],
     metricInput = 'total',
   ) {
-    const userIds = baselines.map((baseline) => baseline.userId);
-    const baselineDatesByUserId = new Map(
-      baselines.map((baseline) => [baseline.userId, baseline.baselineDate]),
+    const portfolioIds = baselines.map((baseline) => baseline.portfolioId);
+    const baselineDatesByPortfolioId = new Map(
+      baselines.map((baseline) => [
+        baseline.portfolioId,
+        baseline.baselineDate,
+      ]),
     );
 
     return this.buildLeaderboard(
       userId,
       metricInput,
       {
-        id: { in: userIds },
+        id: { in: portfolioIds },
       },
-      baselineDatesByUserId,
+      baselineDatesByPortfolioId,
     );
   }
 
   private async buildLeaderboard(
     userId: string,
     metricInput: string,
-    userWhere?: Prisma.UserWhereInput,
-    baselineDatesByUserId?: Map<string, Date>,
+    portfolioWhere?: Prisma.PortfolioWhereInput,
+    baselineDatesByPortfolioId?: Map<string, Date>,
   ) {
     const metric = this.parseLeaderboardMetric(metricInput);
-    await this.ensurePortfolio(userId);
+    await this.ensureActivePortfolio(userId);
 
-    const users = await this.prisma.user.findMany({
-      where: userWhere,
+    const portfolios = await this.prisma.portfolio.findMany({
+      where: portfolioWhere,
       select: {
         id: true,
-        username: true,
-        portfolios: {
+        name: true,
+        cash: true,
+        createdAt: true,
+        user: {
           select: {
-            cash: true,
-            createdAt: true,
+            id: true,
+            username: true,
           },
-          take: 1,
         },
         holdings: {
           select: {
@@ -283,37 +478,35 @@ export class PortfolioService {
     });
 
     const ranked = await Promise.all(
-      users
-        .filter((user) => user.portfolios.length > 0)
-        .map(async (user) => {
-          const portfolio = user.portfolios[0];
+      portfolios.map(async (portfolio) => {
+        const totalValue = await this.calculateCurrentPortfolioValue(
+          portfolio.cash,
+          portfolio.holdings,
+        );
 
-          const totalValue = await this.calculateCurrentPortfolioValue(
-            portfolio.cash,
-            user.holdings,
-          );
+        const seasonGainPercent =
+          metric === 'seasonal'
+            ? await this.calculateGainPercentSinceDate({
+                portfolioId: portfolio.id,
+                currentTotalValue: totalValue,
+                currentCash: this.toNumber(portfolio.cash),
+                holdings: portfolio.holdings,
+                portfolioCreatedAt: portfolio.createdAt,
+                baselineDate:
+                  baselineDatesByPortfolioId?.get(portfolio.id) ??
+                  this.getCurrentSeasonStart(),
+              })
+            : null;
 
-          const seasonGainPercent =
-            metric === 'seasonal'
-              ? await this.calculateGainPercentSinceDate({
-                  userId: user.id,
-                  currentTotalValue: totalValue,
-                  currentCash: this.toNumber(portfolio.cash),
-                  holdings: user.holdings,
-                  portfolioCreatedAt: portfolio.createdAt,
-                  baselineDate:
-                    baselineDatesByUserId?.get(user.id) ??
-                    this.getCurrentSeasonStart(),
-                })
-              : null;
-
-          return {
-            userId: user.id,
-            username: user.username,
-            totalValue,
-            seasonGainPercent,
-          };
-        }),
+        return {
+          portfolioId: portfolio.id,
+          portfolioName: portfolio.name,
+          userId: portfolio.user.id,
+          username: portfolio.user.username,
+          totalValue,
+          seasonGainPercent,
+        };
+      }),
     );
 
     const entries = ranked
@@ -333,6 +526,7 @@ export class PortfolioService {
       .map((entry, index) => ({
         ...entry,
         rank: index + 1,
+        isOwnPortfolio: entry.userId === userId,
         isCurrentUser: entry.userId === userId,
       }));
 
@@ -350,18 +544,14 @@ export class PortfolioService {
     const total = quantity.mul(price);
 
     return this.prisma.$transaction(async (tx) => {
-      const portfolio = await tx.portfolio.upsert({
-        where: { userId },
-        create: { userId },
-        update: {},
-      });
+      const portfolio = await this.ensureActivePortfolio(userId, tx);
 
       if (portfolio.cash.lt(total)) {
         throw new BadRequestException('Not enough cash to buy this stock');
       }
 
       const existingHolding = await tx.portfolioHolding.findUnique({
-        where: { userId_symbol: { userId, symbol } },
+        where: { portfolioId_symbol: { portfolioId: portfolio.id, symbol } },
       });
 
       const holding = existingHolding
@@ -377,7 +567,7 @@ export class PortfolioService {
           })
         : await tx.portfolioHolding.create({
             data: {
-              userId,
+              portfolioId: portfolio.id,
               symbol,
               quantity,
               averagePrice: price,
@@ -387,6 +577,7 @@ export class PortfolioService {
       const transaction = await tx.transaction.create({
         data: {
           userId,
+          portfolioId: portfolio.id,
           symbol,
           type: 'BUY',
           quantity,
@@ -396,7 +587,7 @@ export class PortfolioService {
       });
 
       const updatedPortfolio = await tx.portfolio.update({
-        where: { userId },
+        where: { id: portfolio.id },
         data: { cash: portfolio.cash.sub(total) },
       });
 
@@ -411,14 +602,10 @@ export class PortfolioService {
     const total = quantity.mul(price);
 
     return this.prisma.$transaction(async (tx) => {
-      const portfolio = await tx.portfolio.upsert({
-        where: { userId },
-        create: { userId },
-        update: {},
-      });
+      const portfolio = await this.ensureActivePortfolio(userId, tx);
 
       const existingHolding = await tx.portfolioHolding.findUnique({
-        where: { userId_symbol: { userId, symbol } },
+        where: { portfolioId_symbol: { portfolioId: portfolio.id, symbol } },
       });
 
       if (!existingHolding || existingHolding.quantity.lt(quantity)) {
@@ -438,6 +625,7 @@ export class PortfolioService {
       const transaction = await tx.transaction.create({
         data: {
           userId,
+          portfolioId: portfolio.id,
           symbol,
           type: 'SELL',
           quantity,
@@ -447,7 +635,7 @@ export class PortfolioService {
       });
 
       const updatedPortfolio = await tx.portfolio.update({
-        where: { userId },
+        where: { id: portfolio.id },
         data: { cash: portfolio.cash.add(total) },
       });
 
@@ -456,12 +644,15 @@ export class PortfolioService {
   }
 
   async getTransactions(userId: string) {
+    const portfolio = await this.ensureActivePortfolio(userId);
     const transactions = await this.prisma.transaction.findMany({
-      where: { userId },
+      where: { portfolioId: portfolio.id },
       orderBy: { createdAt: 'desc' },
     });
 
     return {
+      portfolioId: portfolio.id,
+      portfolioName: portfolio.name,
       userId,
       transactions: transactions.map((transaction) => ({
         id: transaction.id,
@@ -518,14 +709,14 @@ export class PortfolioService {
   }
 
   private async calculateGainPercentSinceDate({
-    userId,
+    portfolioId,
     currentTotalValue,
     currentCash,
     holdings,
     portfolioCreatedAt,
     baselineDate,
   }: {
-    userId: string;
+    portfolioId: string;
     currentTotalValue: number;
     currentCash: number;
     holdings: Array<{ symbol: string; quantity: Prisma.Decimal }>;
@@ -536,7 +727,7 @@ export class PortfolioService {
       portfolioCreatedAt > baselineDate ? portfolioCreatedAt : baselineDate;
     const transactions = await this.prisma.transaction.findMany({
       where: {
-        userId,
+        portfolioId,
         createdAt: {
           gte: effectiveBaselineDate,
         },
@@ -633,21 +824,96 @@ export class PortfolioService {
     return new Date(now.getFullYear(), now.getMonth(), 1);
   }
 
-  private async ensurePortfolio(userId: string) {
-    return this.prisma.portfolio.upsert({
-      where: { userId },
-      create: { userId },
-      update: {},
-    });
+  private normalizePortfolioName(name: string) {
+    const normalized = name.trim();
+
+    if (!normalized) {
+      throw new BadRequestException('Portfolio name is required');
+    }
+
+    return normalized;
   }
 
-  private async getTodayTransactionsBySymbol(userId: string) {
+  private async getOwnedPortfolio(
+    userId: string,
+    portfolioId: string,
+    client: PrismaClientLike = this.prisma,
+  ) {
+    const portfolio = await client.portfolio.findFirst({
+      where: { id: portfolioId, userId },
+    });
+
+    if (!portfolio) {
+      throw new NotFoundException('Portfolio not found');
+    }
+
+    return portfolio;
+  }
+
+  private async ensureActivePortfolio(
+    userId: string,
+    client: PrismaClientLike = this.prisma,
+  ) {
+    const user = await client.user.findUnique({
+      where: { id: userId },
+      select: {
+        username: true,
+        activePortfolioId: true,
+      },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    if (user.activePortfolioId) {
+      const activePortfolio = await client.portfolio.findFirst({
+        where: {
+          id: user.activePortfolioId,
+          userId,
+        },
+      });
+
+      if (activePortfolio) return activePortfolio;
+    }
+
+    const firstPortfolio = await client.portfolio.findFirst({
+      where: { userId },
+      orderBy: [{ isDefault: 'desc' }, { createdAt: 'asc' }],
+    });
+
+    if (firstPortfolio) {
+      await client.user.update({
+        where: { id: userId },
+        data: { activePortfolioId: firstPortfolio.id },
+      });
+
+      return firstPortfolio;
+    }
+
+    const portfolio = await client.portfolio.create({
+      data: {
+        userId,
+        name: user.username,
+        isDefault: true,
+      },
+    });
+
+    await client.user.update({
+      where: { id: userId },
+      data: { activePortfolioId: portfolio.id },
+    });
+
+    return portfolio;
+  }
+
+  private async getTodayTransactionsBySymbol(portfolioId: string) {
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
 
     const transactions = await this.prisma.transaction.findMany({
       where: {
-        userId,
+        portfolioId,
         createdAt: { gte: todayStart },
       },
       orderBy: { createdAt: 'asc' },
@@ -736,9 +1002,9 @@ export class PortfolioService {
     return { change, baselineValue };
   }
 
-  private async resolveAllRangeStart(userId: string, fallbackDate: Date) {
+  private async resolveAllRangeStart(portfolioId: string, fallbackDate: Date) {
     const firstTransaction = await this.prisma.transaction.findFirst({
-      where: { userId },
+      where: { portfolioId },
       orderBy: { createdAt: 'asc' },
       select: { createdAt: true },
     });
@@ -749,13 +1015,13 @@ export class PortfolioService {
   }
 
   private async loadPortfolioChartTransactions(
-    userId: string,
+    portfolioId: string,
     end: Date,
     source: 'intraday' | 'daily',
   ) {
     const transactions = await this.prisma.transaction.findMany({
       where: {
-        userId,
+        portfolioId,
         createdAt: {
           lte: end,
         },
@@ -1339,6 +1605,14 @@ export class PortfolioService {
 
   private toNumber(value: Prisma.Decimal) {
     return value.toNumber();
+  }
+
+  private mapPortfolioSummary(portfolio: PortfolioSummaryRecord) {
+    return {
+      ...portfolio,
+      cash: this.toNumber(portfolio.cash),
+      totalValue: this.toNumber(portfolio.cash),
+    };
   }
 
   private mapTradeResult(

@@ -18,6 +18,10 @@ export class GroupsService {
 
   async createGroup(userId: string, dto: CreateGroupDto) {
     const code = await this.generateUniqueCode();
+    const portfolio = await this.portfolioService.getActivePortfolioForUser(
+      userId,
+    );
+
     return this.prisma.group.create({
       data: {
         name: dto.name.trim(),
@@ -26,6 +30,7 @@ export class GroupsService {
         members: {
           create: {
             userId,
+            portfolioId: portfolio.id,
             role: 'OWNER',
           },
         },
@@ -41,6 +46,9 @@ export class GroupsService {
 
   async joinGroup(userId: string, dto: JoinGroupDto) {
     const code = dto.code.trim().toUpperCase();
+    const portfolio = await this.portfolioService.getActivePortfolioForUser(
+      userId,
+    );
     const group = await this.prisma.group.findUnique({
       where: { code },
       select: { id: true, name: true, code: true },
@@ -52,21 +60,22 @@ export class GroupsService {
 
     const existingMembership = await this.prisma.groupMember.findUnique({
       where: {
-        groupId_userId: {
+        groupId_portfolioId: {
           groupId: group.id,
-          userId,
+          portfolioId: portfolio.id,
         },
       },
     });
 
     if (existingMembership) {
-      throw new BadRequestException('You are already a member of this group');
+      throw new BadRequestException('This portfolio is already a member of this group');
     }
 
     await this.prisma.groupMember.create({
       data: {
         groupId: group.id,
         userId,
+        portfolioId: portfolio.id,
       },
     });
 
@@ -74,10 +83,14 @@ export class GroupsService {
   }
 
   async getMyGroups(userId: string) {
+    const portfolio = await this.portfolioService.getActivePortfolioForUser(
+      userId,
+    );
+
     return this.prisma.group.findMany({
       where: {
         members: {
-          some: { userId },
+          some: { portfolioId: portfolio.id },
         },
       },
       select: {
@@ -114,6 +127,12 @@ export class GroupsService {
                 username: true,
               },
             },
+            portfolio: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
           },
           orderBy: { joinedAt: 'asc' },
         },
@@ -126,13 +145,13 @@ export class GroupsService {
 
     const members = await this.prisma.groupMember.findMany({
       where: { groupId },
-      select: { userId: true, joinedAt: true },
+      select: { portfolioId: true, joinedAt: true },
     });
 
-    return this.portfolioService.getLeaderboardForUsersSince(
+    return this.portfolioService.getLeaderboardForPortfoliosSince(
       userId,
       members.map((member) => ({
-        userId: member.userId,
+        portfolioId: member.portfolioId,
         baselineDate: member.joinedAt,
       })),
       metric,
@@ -140,17 +159,20 @@ export class GroupsService {
   }
 
   private async ensureMember(userId: string, groupId: string) {
+    const portfolio = await this.portfolioService.getActivePortfolioForUser(
+      userId,
+    );
     const membership = await this.prisma.groupMember.findUnique({
       where: {
-        groupId_userId: {
+        groupId_portfolioId: {
           groupId,
-          userId,
+          portfolioId: portfolio.id,
         },
       },
     });
 
     if (!membership) {
-      throw new ForbiddenException('You are not a member of this group');
+      throw new ForbiddenException('This portfolio is not a member of this group');
     }
 
     return membership;

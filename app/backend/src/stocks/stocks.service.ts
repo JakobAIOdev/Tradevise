@@ -8,6 +8,7 @@ import { Prisma } from '@prisma/client';
 import { Observable, type Subscriber } from 'rxjs';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { RedisService } from '../redis/redis.service.js';
+import { PortfolioService } from '../portfolio/portfolio.service.js';
 
 type LangSchwarzSearchResult = {
   id?: number;
@@ -179,6 +180,7 @@ export class StocksService {
   constructor(
     private readonly redisService: RedisService,
     private readonly prisma: PrismaService,
+    private readonly portfolioService: PortfolioService,
   ) {}
 
   async search(query: string): Promise<StockSuggestion[]> {
@@ -247,8 +249,11 @@ export class StocksService {
   }
 
   async getWatchlistStocks(userId: string): Promise<DiscoverStock[]> {
+    const portfolio = await this.portfolioService.getActivePortfolioForUser(
+      userId,
+    );
     const items = await this.prisma.watchlistItem.findMany({
-      where: { userId },
+      where: { portfolioId: portfolio.id },
       orderBy: { createdAt: 'asc' },
     });
 
@@ -256,17 +261,20 @@ export class StocksService {
   }
 
   async addToWatchlist(userId: string, symbol: string): Promise<DiscoverStock> {
+    const portfolio = await this.portfolioService.getActivePortfolioForUser(
+      userId,
+    );
     const normalizedSymbol = this.parseSupportedLangSchwarzSymbol(symbol);
 
     await this.prisma.watchlistItem.upsert({
       where: {
-        userId_symbol: {
-          userId,
+        portfolioId_symbol: {
+          portfolioId: portfolio.id,
           symbol: normalizedSymbol,
         },
       },
       create: {
-        userId,
+        portfolioId: portfolio.id,
         symbol: normalizedSymbol,
       },
       update: {},
@@ -277,11 +285,14 @@ export class StocksService {
   }
 
   async removeFromWatchlist(userId: string, symbol: string) {
+    const portfolio = await this.portfolioService.getActivePortfolioForUser(
+      userId,
+    );
     const normalizedSymbol = this.parseSupportedLangSchwarzSymbol(symbol);
 
     await this.prisma.watchlistItem.deleteMany({
       where: {
-        userId,
+        portfolioId: portfolio.id,
         symbol: normalizedSymbol,
       },
     });

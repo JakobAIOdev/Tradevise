@@ -45,6 +45,38 @@ type PortfolioChartTransaction = {
   time: number;
 };
 
+type PortfolioTransactionWithResult = {
+  id: string;
+  symbol: string;
+  type: 'BUY' | 'SELL';
+  quantity: number;
+  price: number;
+  total: number;
+  createdAt: Date;
+  realizedProfitLoss: number | null;
+  realizedProfitLossPercent: number | null;
+};
+
+type PortfolioTransactionRecord = {
+  id: string;
+  symbol: string;
+  type: 'BUY' | 'SELL';
+  quantity: Prisma.Decimal;
+  price: Prisma.Decimal;
+  total: Prisma.Decimal;
+  createdAt: Date;
+};
+
+type TransactionPositionState = {
+  quantity: number;
+  averagePrice: number;
+};
+
+type RealizedTransactionResult = {
+  realizedProfitLoss: number | null;
+  realizedProfitLossPercent: number | null;
+};
+
 type PortfolioPriceHistory = {
   points: Array<{
     time: number;
@@ -645,24 +677,158 @@ export class PortfolioService {
 
   async getTransactions(userId: string) {
     const portfolio = await this.ensureActivePortfolio(userId);
-    const transactions = await this.prisma.transaction.findMany({
-      where: { portfolioId: portfolio.id },
-      orderBy: { createdAt: 'desc' },
-    });
+    const [transactions, holdings] = await Promise.all([
+      this.prisma.transaction.findMany({
+        where: { portfolioId: portfolio.id },
+        orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+      }),
+      this.prisma.portfolioHolding.findMany({
+        where: { portfolioId: portfolio.id },
+        select: {
+          symbol: true,
+          averagePrice: true,
+        },
+      }),
+    ]);
+    const fallbackAveragePriceBySymbol = new Map(
+      holdings.map((holding) => [
+        holding.symbol,
+        this.toNumber(holding.averagePrice),
+      ]),
+    );
+    const transactionsWithResults = this.addRealizedResultsToTransactions(
+      transactions,
+      fallbackAveragePriceBySymbol,
+    );
 
     return {
       portfolioId: portfolio.id,
       portfolioName: portfolio.name,
       userId,
-      transactions: transactions.map((transaction) => ({
+      transactions: transactionsWithResults.reverse().map((transaction) => ({
         id: transaction.id,
         symbol: transaction.symbol,
         type: transaction.type,
-        quantity: this.toNumber(transaction.quantity),
-        price: this.toNumber(transaction.price),
-        total: this.toNumber(transaction.total),
+        quantity: transaction.quantity,
+        price: transaction.price,
+        total: transaction.total,
+        realizedProfitLoss: transaction.realizedProfitLoss,
+        realizedProfitLossPercent: transaction.realizedProfitLossPercent,
         createdAt: transaction.createdAt,
       })),
+    };
+  }
+
+  private addRealizedResultsToTransactions(
+    transactions: PortfolioTransactionRecord[],
+    fallbackAveragePriceBySymbol = new Map<string, number>(),
+  ): PortfolioTransactionWithResult[] {
+    const positions = new Map<string, TransactionPositionState>();
+
+    return transactions.map((transaction) => {
+      const quantity = this.toNumber(transaction.quantity);
+      const price = this.toNumber(transaction.price);
+      const total = this.toNumber(transaction.total);
+      const position = positions.get(transaction.symbol) ?? {
+        quantity: 0,
+        averagePrice: 0,
+      };
+
+      let realizedProfitLoss: number | null = null;
+      let realizedProfitLossPercent: number | null = null;
+
+      if (transaction.type === 'BUY') {
+        positions.set(
+          transaction.symbol,
+          this.applyBuyTransactionToPosition(position, quantity, price),
+        );
+      } else {
+        const averagePrice =
+          position.averagePrice > 0
+            ? position.averagePrice
+            : (fallbackAveragePriceBySymbol.get(transaction.symbol) ?? 0);
+        const result = this.calculateRealizedTransactionResult({
+          averagePrice,
+          quantity,
+          price,
+          total,
+        });
+
+        realizedProfitLoss = result.realizedProfitLoss;
+        realizedProfitLossPercent = result.realizedProfitLossPercent;
+
+        const nextQuantity = Math.max(position.quantity - quantity, 0);
+
+        if (nextQuantity === 0) {
+          positions.delete(transaction.symbol);
+        } else {
+          positions.set(transaction.symbol, {
+            quantity: nextQuantity,
+            averagePrice,
+          });
+        }
+      }
+
+      return {
+        id: transaction.id,
+        symbol: transaction.symbol,
+        type: transaction.type,
+        quantity,
+        price,
+        total,
+        createdAt: transaction.createdAt,
+        realizedProfitLoss,
+        realizedProfitLossPercent,
+      };
+    });
+  }
+
+  private applyBuyTransactionToPosition(
+    position: TransactionPositionState,
+    quantity: number,
+    price: number,
+  ): TransactionPositionState {
+    const nextQuantity = position.quantity + quantity;
+    const nextAveragePrice =
+      nextQuantity > 0
+        ? (position.quantity * position.averagePrice + quantity * price) /
+          nextQuantity
+        : price;
+
+    return {
+      quantity: nextQuantity,
+      averagePrice: nextAveragePrice,
+    };
+  }
+
+  private calculateRealizedTransactionResult({
+    averagePrice,
+    quantity,
+    price,
+    total,
+  }: {
+    averagePrice: number;
+    quantity: number;
+    price: number;
+    total: number;
+  }): RealizedTransactionResult {
+    const costBasis = averagePrice * quantity;
+
+    if (costBasis <= 0) {
+      return {
+        realizedProfitLoss: null,
+        realizedProfitLossPercent: null,
+      };
+    }
+
+    const profitLoss = total - costBasis;
+    const profitLossPercent = ((price - averagePrice) / averagePrice) * 100;
+
+    return {
+      realizedProfitLoss: Number.isFinite(profitLoss) ? profitLoss : null,
+      realizedProfitLossPercent: Number.isFinite(profitLossPercent)
+        ? profitLossPercent
+        : null,
     };
   }
 

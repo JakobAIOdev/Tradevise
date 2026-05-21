@@ -2,12 +2,15 @@ import { Module } from '@nestjs/common';
 import { AuthModule } from '../auth/auth.module.js';
 import { PrismaModule } from '../prisma/prisma.module.js';
 import { RedisModule } from '../redis/redis.module.js';
-import { PortfolioController } from './portfolio.controller.js';
+import {
+  PortfolioController,
+  PortfoliosController,
+} from './portfolio.controller.js';
 import { PortfolioService } from './portfolio.service.js';
 
 @Module({
   imports: [AuthModule, PrismaModule, RedisModule],
-  controllers: [PortfolioController],
+  controllers: [PortfolioController, PortfoliosController],
   providers: [PortfolioService],
   exports: [PortfolioService],
 })

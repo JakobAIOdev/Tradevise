@@ -13,7 +13,7 @@ export default function GroupOverviewCard({ group, onOpen }: GroupOverviewCardPr
   const { data } = useGroupLeaderboard(group.id, 'seasonal')
   const entries = data?.entries ?? []
   const topEntry = entries[0]
-  const currentUserEntry = entries.find((entry) => entry.isCurrentUser)
+  const currentUserEntry = entries.find((entry) => entry.isOwnPortfolio)
   const currentRank = currentUserEntry?.rank
   const currentGain = currentUserEntry?.seasonGainPercent
 
@@ -44,7 +44,7 @@ export default function GroupOverviewCard({ group, onOpen }: GroupOverviewCardPr
       <div className="mt-18 flex items-center justify-between gap-16 border-t border-border pt-5">
         <div className="flex min-w-0 items-center gap-5 text-muted">
           <Trophy size={14} strokeWidth={1.5} />
-          <p className="truncate text-body">Top: {topEntry?.username ?? '-'}</p>
+          <p className="truncate text-body">Top: {topEntry?.portfolioName ?? '-'}</p>
         </div>
 
         <p className={`shrink-0 text-body ${getSignedTrendTextClass(currentGain)}`}>

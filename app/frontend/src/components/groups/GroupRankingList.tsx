@@ -24,7 +24,7 @@ export default function GroupRankingList({ entries, isError, isLoading }: GroupR
 
         {!isLoading &&
           !isError &&
-          entries.map((entry) => <GroupRankingRow key={entry.userId} entry={entry} />)}
+          entries.map((entry) => <GroupRankingRow key={entry.portfolioId} entry={entry} />)}
       </div>
     </div>
   )
@@ -34,13 +34,17 @@ function GroupRankingRow({ entry }: { entry: LeaderboardEntry }) {
   return (
     <div
       className={`grid min-h-19.5 grid-cols-[2rem_minmax(0,1fr)_auto] items-center gap-3 px-3 ${
-        entry.isCurrentUser
+        entry.isOwnPortfolio
           ? 'border-b border-border bg-surface-hover/70'
           : 'border-b border-border last:border-b-0'
       }`}
     >
       <p className="text-body-mobile font-bold text-muted">{entry.rank}</p>
-      <LeaderboardUser username={entry.username} isCurrentUser={entry.isCurrentUser} />
+      <LeaderboardUser
+        username={entry.portfolioName}
+        subtitle={entry.username}
+        isCurrentUser={entry.isOwnPortfolio}
+      />
       <p
         className={`shrink-0 text-body-mobile font-medium ${getSignedTrendTextClass(
           entry.seasonGainPercent,

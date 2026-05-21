@@ -13,13 +13,13 @@ model User {
   passwordHash       String
   hashedRefreshToken String?
   tokenVersion       Int      @default(0)
+  activePortfolioId  String?
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
-  holdings         PortfolioHolding[]
-  transactions     Transaction[]
-  portfolios       Portfolio[]
-  watchlistItems   WatchlistItem[]
+  activePortfolio Portfolio?     @relation("ActivePortfolio", fields: [activePortfolioId], references: [id], onDelete: SetNull)
+  transactions    Transaction[]
+  portfolios      Portfolio[]    @relation("UserPortfolios")
   ownedGroups      Group[]            @relation("GroupOwner")
   groupMemberships GroupMember[]      @relation("GroupMemberUser")
 }
@@ -70,29 +70,33 @@ model StockMeta {
 
 model PortfolioHolding {
   id           String   @id @default(cuid())
-  userId       String
+  portfolioId  String
   symbol       String
   quantity     Decimal  @db.Decimal(18, 6)
   averagePrice Decimal  @db.Decimal(14, 4)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  portfolio Portfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
 
-  @@unique([userId, symbol])
+  @@unique([portfolioId, symbol])
 }
 
 model Transaction {
-  id        String    @id @default(cuid())
-  userId    String
-  symbol    String
-  type      TradeType
-  quantity  Decimal   @db.Decimal(18, 6)
-  price     Decimal   @db.Decimal(14, 4)
-  total     Decimal   @db.Decimal(18, 4)
-  createdAt DateTime  @default(now())
+  id          String    @id @default(cuid())
+  userId      String
+  portfolioId String
+  symbol      String
+  type        TradeType
+  quantity    Decimal   @db.Decimal(18, 6)
+  price       Decimal   @db.Decimal(14, 4)
+  total       Decimal   @db.Decimal(18, 4)
+  createdAt   DateTime  @default(now())
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  portfolio Portfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+
+  @@index([portfolioId])
 }
 
 enum TradeType {
@@ -102,23 +106,33 @@ enum TradeType {
 
 model Portfolio {
   id        String   @id @default(cuid())
-  userId    String   @unique
+  userId    String
+  name      String
+  isDefault Boolean  @default(false)
   cash      Decimal  @default(10000.00) @db.Decimal(18, 4)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  activeForUsers User[]             @relation("ActivePortfolio")
+  holdings       PortfolioHolding[]
+  transactions   Transaction[]
+  watchlistItems WatchlistItem[]
+  groupMembers   GroupMember[]
+  user           User               @relation("UserPortfolios", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, name])
+  @@index([userId])
 }
 
 model WatchlistItem {
   id        String   @id @default(cuid())
-  userId    String
+  portfolioId String
   symbol    String   @db.Text
   createdAt DateTime @default(now())
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  portfolio Portfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
 
-  @@unique([userId, symbol])
+  @@unique([portfolioId, symbol])
   @@index([symbol])
   @@map("watchlist_items")
 }
@@ -135,16 +149,19 @@ model Group {
 }
 
 model GroupMember {
-  id       String    @id @default(uuid())
-  groupId  String
-  userId   String
-  role     GroupRole @default(MEMBER)
-  joinedAt DateTime  @default(now())
+  id          String    @id @default(uuid())
+  groupId     String
+  userId      String
+  portfolioId String
+  role        GroupRole @default(MEMBER)
+  joinedAt    DateTime  @default(now())
 
-  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  user  User  @relation("GroupMemberUser", fields: [userId], references: [id], onDelete: Cascade)
+  group     Group     @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  portfolio Portfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+  user      User      @relation("GroupMemberUser", fields: [userId], references: [id], onDelete: Cascade)
 
-  @@unique([groupId, userId])
+  @@unique([groupId, portfolioId])
+  @@index([portfolioId])
 }
 
 enum GroupRole {

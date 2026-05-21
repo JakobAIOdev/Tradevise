@@ -34,7 +34,7 @@ export default function LeaderboardTable({
       {!isError &&
         !isLoading &&
         tableEntries.map((entry) => (
-          <LeaderboardRow key={entry.userId} entry={entry} metric={metric} />
+          <LeaderboardRow key={entry.portfolioId} entry={entry} metric={metric} />
         ))}
     </div>
   )

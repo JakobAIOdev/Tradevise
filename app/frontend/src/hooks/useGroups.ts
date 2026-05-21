@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { buildApiUrl, protectedFetch } from '../lib/api'
 import type { GroupSummary, GroupDetail, LeaderboardMetric, Leaderboard } from '../types'
+import { useActivePortfolioId } from './usePortfolios'
 
 async function fetchGroups(): Promise<GroupSummary[]> {
   const res = await protectedFetch(buildApiUrl('/groups'))
@@ -65,9 +66,12 @@ async function fetchGroupLeaderboard(
 }
 
 export function useGroups() {
+  const activePortfolioId = useActivePortfolioId()
+
   return useQuery({
-    queryKey: ['groups'],
+    queryKey: ['groups', activePortfolioId],
     queryFn: fetchGroups,
+    enabled: Boolean(activePortfolioId),
   })
 }
 
@@ -94,17 +98,21 @@ export function useJoinGroup() {
 }
 
 export function useGroup(groupId: string) {
+  const activePortfolioId = useActivePortfolioId()
+
   return useQuery({
-    queryKey: ['groups', groupId],
+    queryKey: ['groups', activePortfolioId, groupId],
     queryFn: () => fetchGroup(groupId),
-    enabled: Boolean(groupId),
+    enabled: Boolean(activePortfolioId && groupId),
   })
 }
 
 export function useGroupLeaderboard(groupId: string, metric: LeaderboardMetric) {
+  const activePortfolioId = useActivePortfolioId()
+
   return useQuery({
-    queryKey: ['groups', groupId, 'leaderboard', metric],
+    queryKey: ['groups', activePortfolioId, groupId, 'leaderboard', metric],
     queryFn: () => fetchGroupLeaderboard(groupId, metric),
-    enabled: Boolean(groupId),
+    enabled: Boolean(activePortfolioId && groupId),
   })
 }

@@ -48,6 +48,18 @@ const RANGE_OPTIONS: Array<{ value: ChartRange; label: string }> = [
   { value: 'ALL', label: 'All' },
 ]
 
+function normalizeChartPoints(data: ChartHistoryResponse | undefined, range: ChartRange) {
+  if (!data?.points) return []
+
+  return data.points
+    .filter((point) => Number.isFinite(point.time) && Number.isFinite(point.price))
+    .sort((a, b) => a.time - b.time)
+    .map((point, index) => ({
+      ...point,
+      x: range === 'intraday' ? point.time : index,
+    }))
+}
+
 function getPriceAxisConfig(points: { price: number }[]) {
   const baseline = points[0]?.price ?? 0
 
@@ -106,12 +118,7 @@ function getPriceAxisWidth(ticks: number[]) {
 }
 
 const StockChart = ({ ticker, range, onRangeChange, data, title }: StockChartProps) => {
-  const points = !data?.points
-    ? []
-    : data.points.map((point, index) => ({
-        ...point,
-        x: range === 'intraday' ? point.time : index,
-      }))
+  const points = normalizeChartPoints(data, range)
 
   const intradayAxis = getIntradayAxisConfig(points[0]?.time)
   const xAxisTicks = getXAxisTicks(points, range, intradayAxis.ticks)
@@ -121,6 +128,8 @@ const StockChart = ({ ticker, range, onRangeChange, data, title }: StockChartPro
 
   const baseline = points[0]?.price
   const lastPrice = points.at(-1)?.price
+  const isPositive = baseline == null || lastPrice == null || lastPrice >= baseline
+  const lineTone = isPositive ? 'text-bullish' : 'text-bearish'
 
   return (
     <Card
@@ -193,15 +202,13 @@ const StockChart = ({ ticker, range, onRangeChange, data, title }: StockChartPro
               strokeDasharray="4 4"
             />
             <Line
+              className={lineTone}
               type="monotone"
               dataKey="price"
-              stroke={
-                baseline == null || lastPrice == null || lastPrice >= baseline
-                  ? 'var(--color-bullish)'
-                  : 'var(--color-bearish)'
-              }
+              stroke="currentColor"
               strokeWidth={3}
               dot={false}
+              isAnimationActive={false}
             />
             <Tooltip
               content={(props) => <CustomTooltip {...props} source={data?.source ?? 'intraday'} />}

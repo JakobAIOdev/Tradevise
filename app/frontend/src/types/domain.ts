@@ -49,6 +49,8 @@ export type PortfolioHolding = {
 }
 
 export type Portfolio = {
+  portfolioId: string
+  portfolioName: string
   userId: string
   cash: number
   holdingsValue: number
@@ -59,15 +61,34 @@ export type Portfolio = {
   todayBaselineValue: number
 }
 
+export type PortfolioSummary = {
+  id: string
+  name: string
+  cash: number
+  totalValue?: number
+  isDefault: boolean
+  isActive: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+export type PortfolioListResponse = {
+  activePortfolioId: string
+  portfolios: PortfolioSummary[]
+}
+
 export type LeaderboardMetric = 'total' | 'seasonal'
 
 export type LeaderboardEntry = {
+  portfolioId: string
+  portfolioName: string
   userId: string
   username: string
   totalValue: number
   seasonGainPercent: number | null
   rank: number
   isCurrentUser: boolean
+  isOwnPortfolio: boolean
 }
 
 export type Leaderboard = {
@@ -99,6 +120,10 @@ export type GroupDetail = {
     user: {
       id: string
       username: string
+    }
+    portfolio: {
+      id: string
+      name: string
     }
   }>
 }

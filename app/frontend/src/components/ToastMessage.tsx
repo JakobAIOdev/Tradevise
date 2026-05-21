@@ -1,4 +1,4 @@
-import { useToast } from '../hooks/useToast'
+import { useToast } from '../contexts/toast'
 
 export default function ToastMessage() {
   const { isVisible, type, message } = useToast()

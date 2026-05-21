@@ -28,7 +28,7 @@ export default function HomePage() {
   return (
     <div className="flex flex-col gap-25">
       <PageTitle title="Home" />
-      <div className="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-25">
+      <div className="grid grid-cols-1 gap-25 md:grid-cols-2 xl:grid-cols-3">
         <StatCard
           icon={TrendingUp}
           label={rangeLabel}
@@ -41,14 +41,6 @@ export default function HomePage() {
           subTrend={portfolio ? getTrend(rangeChange) : 'neutral'}
         />
         <StatCard
-          icon={Wallet}
-          label="Total Portfolio"
-          value={portfolio ? formatMoney(totalValue) : loadingValue}
-          valueTrend="neutral"
-          sub={errorSub ?? formatSignedMoney(totalProfitLoss)}
-          subTrend={portfolio ? getTrend(totalProfitLoss) : 'neutral'}
-        />
-        <StatCard
           icon={BarChart2}
           label="Cash left"
           value={portfolio ? formatMoney(cash) : loadingValue}
@@ -56,6 +48,16 @@ export default function HomePage() {
           sub={errorSub ?? 'Available'}
           subTrend="neutral"
         />
+        <div className="h-full md:col-span-2 xl:col-span-1">
+          <StatCard
+            icon={Wallet}
+            label="Total Portfolio"
+            value={portfolio ? formatMoney(totalValue) : loadingValue}
+            valueTrend="neutral"
+            sub={errorSub ?? formatSignedMoney(totalProfitLoss)}
+            subTrend={portfolio ? getTrend(totalProfitLoss) : 'neutral'}
+          />
+        </div>
       </div>
 
       <div className="h-111.5">

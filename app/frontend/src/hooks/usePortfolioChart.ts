@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { buildApiUrl, protectedFetch } from '../lib/api'
 import type { ChartHistoryResponse, ChartRange } from '../types/chart'
+import { useActivePortfolioId } from './usePortfolios'
 
 async function fetchPortfolioChart(range: ChartRange): Promise<ChartHistoryResponse> {
   const params = new URLSearchParams({ range })
@@ -14,9 +15,12 @@ async function fetchPortfolioChart(range: ChartRange): Promise<ChartHistoryRespo
 }
 
 export function usePortfolioChart(range: ChartRange) {
+  const activePortfolioId = useActivePortfolioId()
+
   return useQuery({
-    queryKey: ['portfolio-chart', range],
+    queryKey: ['portfolio-chart', activePortfolioId, range],
     queryFn: () => fetchPortfolioChart(range),
+    enabled: Boolean(activePortfolioId),
     staleTime: 1000 * 30,
     refetchOnWindowFocus: true,
     refetchOnReconnect: true,

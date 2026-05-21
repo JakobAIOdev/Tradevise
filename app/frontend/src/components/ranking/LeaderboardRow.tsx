@@ -18,13 +18,17 @@ export default function LeaderboardRow({ entry, metric }: LeaderboardRowProps) {
   return (
     <div
       className={`grid min-h-20.5 grid-cols-[40px_minmax(0,1fr)_minmax(90px,max-content)] items-center gap-3 border-b border-border px-4 last:border-b-0 md:grid-cols-[56px_minmax(0,1fr)_minmax(110px,max-content)] md:gap-4 md:px-7 ${
-        entry.isCurrentUser ? 'bg-surface-hover/70' : 'bg-surface'
+        entry.isOwnPortfolio ? 'bg-surface-hover/70' : 'bg-surface'
       }`}
     >
       <p className="truncate text-center text-body text-muted" title={`Rank ${entry.rank}`}>
         {entry.rank}
       </p>
-      <LeaderboardUser username={entry.username} isCurrentUser={entry.isCurrentUser} />
+      <LeaderboardUser
+        username={entry.portfolioName}
+        subtitle={entry.username}
+        isCurrentUser={entry.isOwnPortfolio}
+      />
       <div className="min-w-0 text-right">
         <p
           className={`truncate text-body leading-tight ${

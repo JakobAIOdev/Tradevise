@@ -12,7 +12,7 @@ export default function GroupDetailContent({ groupId, onClose }: GroupDetailCont
   const { data: group, isError: isGroupError, isLoading: isGroupLoading } = useGroup(groupId)
   const { data: leaderboard, isError, isLoading } = useGroupLeaderboard(groupId, 'seasonal')
   const entries = leaderboard?.entries ?? []
-  const currentUserEntry = entries.find((entry) => entry.isCurrentUser)
+  const currentUserEntry = entries.find((entry) => entry.isOwnPortfolio)
 
   return (
     <>

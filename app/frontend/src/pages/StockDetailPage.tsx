@@ -12,6 +12,7 @@ import { useStockLivePrice } from '../hooks/useStockLivePrice'
 import { useStockStatistics } from '../hooks/useStockStatistics'
 import { useStockChart } from '../hooks/useStockChart'
 import { usePortfolio } from '../hooks/usePortfolio'
+import { useToast } from '../contexts/toast'
 import type { Stock } from '../types'
 import { useModalStore } from '../stores/useModalStore'
 import type { ChartRange } from '../types/chart'
@@ -60,6 +61,7 @@ export default function StockDetailPage() {
   const { data: statistics, isFetching: statisticsFetching } = useStockStatistics(ticker)
   const { data: portfolio, isFetching: portfolioFetching } = usePortfolio()
   const { data: chart } = useStockChart(ticker, range)
+  const { showMessage } = useToast()
   const {
     data: watchlist = [],
     addToWatchlist,
@@ -107,12 +109,18 @@ export default function StockDetailPage() {
   async function toggleFavorite() {
     if (isWatchlistUpdating) return
 
-    if (isFavorite) {
-      await removeFromWatchlist(ticker)
-      return
-    }
+    try {
+      if (isFavorite) {
+        await removeFromWatchlist(ticker)
+        showMessage(`${stock.name} removed from watchlist`, 'success')
+        return
+      }
 
-    await addToWatchlist(ticker)
+      await addToWatchlist(ticker)
+      showMessage(`${stock.name} added to watchlist`, 'success')
+    } catch {
+      showMessage('Failed to update watchlist', 'error')
+    }
   }
 
   return (
@@ -127,7 +135,7 @@ export default function StockDetailPage() {
       </div>
       <DetailHeader {...displayStock} />
       <div className="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_19.6875rem]">
-        <div className="flex-1 h-111.5 bg-red-400 rounded-xl">
+        <div className="flex-1 h-111.5 rounded-xl">
           <StockChart ticker={ticker} range={range} onRangeChange={setRange} data={chart} />
         </div>
         <div className="flex flex-col xl:h-111.5">

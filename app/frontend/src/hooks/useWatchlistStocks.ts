@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { Stock } from '../types'
 import { buildApiUrl, protectedFetch } from '../lib/api'
 import { useLiveStockUpdates } from './useLiveStockUpdates'
+import { useActivePortfolioId } from './usePortfolios'
 
 export const WATCHLIST_STOCKS_QUERY_KEY = ['watchlist-stocks'] as const
 
@@ -39,29 +40,28 @@ function removeStockFromCache(stocks: Stock[] = [], ticker: string) {
 
 export function useWatchlistStocks() {
   const queryClient = useQueryClient()
+  const activePortfolioId = useActivePortfolioId()
+  const queryKey = [...WATCHLIST_STOCKS_QUERY_KEY, activePortfolioId] as const
 
   const query = useQuery({
-    queryKey: WATCHLIST_STOCKS_QUERY_KEY,
+    queryKey,
     queryFn: fetchWatchlistStocks,
+    enabled: Boolean(activePortfolioId),
   })
 
-  useLiveStockUpdates(WATCHLIST_STOCKS_QUERY_KEY, query.data)
+  useLiveStockUpdates(queryKey, query.data)
 
   const addMutation = useMutation({
     mutationFn: addWatchlistStock,
     onSuccess: (stock) => {
-      queryClient.setQueryData<Stock[]>(WATCHLIST_STOCKS_QUERY_KEY, (stocks) =>
-        addStockToCache(stocks, stock),
-      )
+      queryClient.setQueryData<Stock[]>(queryKey, (stocks) => addStockToCache(stocks, stock))
     },
   })
 
   const removeMutation = useMutation({
     mutationFn: removeWatchlistStock,
     onSuccess: (_data, ticker) => {
-      queryClient.setQueryData<Stock[]>(WATCHLIST_STOCKS_QUERY_KEY, (stocks) =>
-        removeStockFromCache(stocks, ticker),
-      )
+      queryClient.setQueryData<Stock[]>(queryKey, (stocks) => removeStockFromCache(stocks, ticker))
     },
   })
 

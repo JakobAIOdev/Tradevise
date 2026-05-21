@@ -24,11 +24,14 @@ export default function PodiumSlot({ entry, metric }: PodiumSlotProps) {
           isWinner ? 'bg-text text-surface' : 'bg-surface-hover text-muted'
         }`}
       >
-        {getInitials(entry.username)}
+        {getInitials(entry.portfolioName)}
       </div>
 
       <div className="w-full min-w-0 text-center">
-        <p className="truncate text-body leading-tight text-text" title={entry.username}>
+        <p className="truncate text-body leading-tight text-text" title={entry.portfolioName}>
+          {entry.portfolioName}
+        </p>
+        <p className="truncate text-[13px] leading-tight text-muted" title={entry.username}>
           {entry.username}
         </p>
         <p

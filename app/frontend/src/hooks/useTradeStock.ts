@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { buildApiUrl, protectedFetch } from '../lib/api'
+import { useActivePortfolioId } from './usePortfolios'
 
 type TradeType = 'buy' | 'sell'
 
@@ -27,13 +28,16 @@ async function tradeStock(type: TradeType, body: TradeStockBody) {
 
 export function useTradeStock(type: TradeType) {
   const queryClient = useQueryClient()
+  const activePortfolioId = useActivePortfolioId()
 
   return useMutation({
     mutationFn: (body: TradeStockBody) => tradeStock(type, body),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['portfolio'] })
-      void queryClient.invalidateQueries({ queryKey: ['portfolio-chart'] })
-      void queryClient.invalidateQueries({ queryKey: ['portfolio-transactions'] })
+      void queryClient.invalidateQueries({ queryKey: ['portfolio', activePortfolioId] })
+      void queryClient.invalidateQueries({ queryKey: ['portfolio-chart', activePortfolioId] })
+      void queryClient.invalidateQueries({ queryKey: ['portfolio-transactions', activePortfolioId] })
+      void queryClient.invalidateQueries({ queryKey: ['leaderboard'] })
+      void queryClient.invalidateQueries({ queryKey: ['groups'] })
     },
   })
 }

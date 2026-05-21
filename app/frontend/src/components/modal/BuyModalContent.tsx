@@ -8,7 +8,7 @@ import {
   getQuantityFromTradeInput,
   parseNumberInput,
 } from '../../utils/trade-order'
-import { useToast } from '../../hooks/useToast'
+import { useToast } from '../../contexts/toast'
 import Button from '../Button'
 import SegmentedControl from '../SegmentedControl'
 import TextField from '../TextField'

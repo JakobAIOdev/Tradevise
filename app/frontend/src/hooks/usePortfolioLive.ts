@@ -8,6 +8,7 @@ import {
   applyLivePriceToPortfolio,
   applyLiveValueDeltaToChart,
 } from '../utils/portfolio-live'
+import { useActivePortfolioId } from './usePortfolios'
 
 type LiveStockEvent = {
   symbol: string
@@ -17,10 +18,11 @@ type LiveStockEvent = {
 export function usePortfolioLive(symbols: string[]) {
   const accessToken = useAuthStore((state) => state.accessToken)
   const queryClient = useQueryClient()
+  const activePortfolioId = useActivePortfolioId()
   const symbolKey = symbols.join(',')
 
   useEffect(() => {
-    if (!accessToken || symbolKey.length === 0) return
+    if (!accessToken || !activePortfolioId || symbolKey.length === 0) return
 
     const params = new URLSearchParams({
       symbols: symbolKey,
@@ -35,7 +37,7 @@ export function usePortfolioLive(symbols: string[]) {
 
       let valueDelta = 0
 
-      queryClient.setQueryData<Portfolio>(['portfolio'], (portfolio) => {
+      queryClient.setQueryData<Portfolio>(['portfolio', activePortfolioId], (portfolio) => {
         const result = applyLivePriceToPortfolio(portfolio, payload)
         valueDelta = result.valueDelta
         return result.portfolio
@@ -44,7 +46,7 @@ export function usePortfolioLive(symbols: string[]) {
       if (valueDelta === 0) return
 
       queryClient.setQueriesData<ChartHistoryResponse>(
-        { queryKey: ['portfolio-chart'] },
+        { queryKey: ['portfolio-chart', activePortfolioId] },
         (chart) => applyLiveValueDeltaToChart(chart, valueDelta),
       )
     }
@@ -52,5 +54,5 @@ export function usePortfolioLive(symbols: string[]) {
     return () => {
       events.close()
     }
-  }, [accessToken, queryClient, symbolKey])
+  }, [accessToken, activePortfolioId, queryClient, symbolKey])
 }

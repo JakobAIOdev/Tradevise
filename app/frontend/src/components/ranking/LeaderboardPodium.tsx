@@ -18,7 +18,7 @@ export default function LeaderboardPodium({ entries, isLoading, metric }: Leader
         <div className="h-72 w-full rounded-2xl bg-surface-hover" />
       ) : (
         podiumEntries.map((entry, index) => (
-          <PodiumSlot key={entry?.userId ?? `empty-${index}`} entry={entry} metric={metric} />
+          <PodiumSlot key={entry?.portfolioId ?? `empty-${index}`} entry={entry} metric={metric} />
         ))
       )}
     </div>

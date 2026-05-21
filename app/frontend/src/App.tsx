@@ -39,6 +39,7 @@ function App() {
               <Routes>
                 <Route element={<PublicLayout />}>
                   <Route path="/login" element={<AuthPage />} />
+                  <Route path="/register" element={<AuthPage />} />
                 </Route>
 
                 <Route element={<DashboardLayout />}>

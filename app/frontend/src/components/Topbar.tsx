@@ -11,6 +11,7 @@ const darkmodeToggleStyles = `text-muted hover:text-text transition-colors durat
 
 export default function Topbar({ onToggle }: TopbarProps) {
   const { theme, toggle } = useTheme()
+  const isDarkMode = theme === 'dark'
 
   return (
     <div className="flex h-60 max-h-60 w-full items-center gap-6 border-b border-border bg-surface px-12 transition-colors duration-200 ease-out md:gap-25 md:pl-25 md:pr-80">
@@ -37,12 +38,14 @@ export default function Topbar({ onToggle }: TopbarProps) {
           variant="secondary"
           size="none"
           onClick={toggle}
+          aria-label={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+          aria-pressed={isDarkMode}
           className="shrink-0 rounded-xl p-8 transition-colors duration-200 ease-out md:p-10"
         >
-          {theme === 'dark' ? (
-            <Moon size={20} strokeWidth={1.5} className={darkmodeToggleStyles} />
+          {isDarkMode ? (
+            <Moon size={20} strokeWidth={1.5} className={darkmodeToggleStyles} aria-hidden="true" />
           ) : (
-            <Sun size={20} strokeWidth={1.5} className={darkmodeToggleStyles} />
+            <Sun size={20} strokeWidth={1.5} className={darkmodeToggleStyles} aria-hidden="true" />
           )}
         </Button>
       </div>

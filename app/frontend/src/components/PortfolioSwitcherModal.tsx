@@ -1,6 +1,7 @@
-import { CheckCircle2, ChevronRight, Circle, Pencil, Plus, X } from 'lucide-react'
+import { CheckCircle2, ChevronRight, Circle, LogOut, Pencil, Plus, X } from 'lucide-react'
 import { useState } from 'react'
 import { useToast } from '../contexts/toast'
+import { useLogout } from '../hooks/useLogout'
 import {
   useCreatePortfolio,
   useDeletePortfolio,
@@ -22,8 +23,10 @@ type PortfolioListProps = {
   portfolios: PortfolioSummary[]
   newPortfolioName: string
   isCreating: boolean
+  isLoggingOut: boolean
   onCreate: () => void
   onEdit: (portfolio: PortfolioSummary) => void
+  onLogout: () => void
   onNameChange: (name: string) => void
   onSelect: (portfolio: PortfolioSummary) => void
 }
@@ -45,6 +48,7 @@ export default function PortfolioSwitcherModal({ isOpen, onClose }: PortfolioSwi
   const { data } = usePortfolios()
   const createPortfolio = useCreatePortfolio()
   const deletePortfolio = useDeletePortfolio()
+  const logout = useLogout()
   const setActivePortfolio = useSetActivePortfolio()
   const updatePortfolio = useUpdatePortfolio()
   const { showMessage } = useToast()
@@ -118,6 +122,12 @@ export default function PortfolioSwitcherModal({ isOpen, onClose }: PortfolioSwi
     })
   }
 
+  function handleLogout() {
+    logout.mutate(undefined, {
+      onSettled: handleClose,
+    })
+  }
+
   return (
     <Modal isOpen={isOpen} onClose={handleClose}>
       <section className="relative text-text">
@@ -138,8 +148,10 @@ export default function PortfolioSwitcherModal({ isOpen, onClose }: PortfolioSwi
             portfolios={portfolios}
             newPortfolioName={newPortfolioName}
             isCreating={createPortfolio.isPending}
+            isLoggingOut={logout.isPending}
             onCreate={handleCreatePortfolio}
             onEdit={handleEditPortfolio}
+            onLogout={handleLogout}
             onNameChange={setNewPortfolioName}
             onSelect={(portfolio) => {
               setActivePortfolio.mutate(portfolio.id, {
@@ -186,8 +198,10 @@ function PortfolioListView({
   portfolios,
   newPortfolioName,
   isCreating,
+  isLoggingOut,
   onCreate,
   onEdit,
+  onLogout,
   onNameChange,
   onSelect,
 }: PortfolioListProps) {
@@ -212,6 +226,8 @@ function PortfolioListView({
           onChange={onNameChange}
           onSubmit={onCreate}
         />
+
+        <LogoutButton isPending={isLoggingOut} onClick={onLogout} />
       </div>
     </>
   )
@@ -309,6 +325,26 @@ function CreatePortfolioForm({
         <Plus size={18} strokeWidth={2} />
       </button>
     </div>
+  )
+}
+
+function LogoutButton({
+  isPending,
+  onClick,
+}: {
+  isPending: boolean
+  onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={isPending}
+      className="mt-3 flex h-11 items-center justify-center gap-2 rounded-lg border border-border bg-surface px-4 text-small font-semibold text-bearish transition-colors hover:cursor-pointer hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-50"
+    >
+      <LogOut size={16} strokeWidth={1.8} />
+      Logout
+    </button>
   )
 }
 

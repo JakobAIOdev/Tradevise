@@ -1,6 +1,6 @@
 import { ExternalLink } from 'lucide-react'
 import BackLink from '../components/BackLink'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import DetailHeader from '../components/detail/DetailHeader'
 import KeyStatistics from '../components/detail/KeyStatistics'
@@ -21,6 +21,7 @@ import { DISCOVER_STOCKS_QUERY_KEY } from '../hooks/useDiscoverStocks'
 import FavoriteButton from '../components/watchlist/FavoriteButton'
 import Card, { CardTitle } from '../components/Card'
 import { buildStockLogoUrl } from '../utils/stocks'
+import { formatMoney } from '../utils/format'
 
 type StockDetailLocationState = {
   stock?: Stock
@@ -57,6 +58,8 @@ export default function StockDetailPage() {
   const location = useLocation()
   const queryClient = useQueryClient()
   const [range, setRange] = useState<ChartRange>('intraday')
+  const quoteAnnouncementRef = useRef<HTMLDivElement>(null)
+  const previousQuote = useRef<{ ticker: string; price?: number } | null>(null)
   useStockLivePrice(ticker)
 
   const { data: statistics, isFetching: statisticsFetching } = useStockStatistics(ticker)
@@ -104,6 +107,25 @@ export default function StockDetailPage() {
   )
 
   useEffect(() => {
+    const price = displayStock.price
+
+    if (typeof price !== 'number' || price <= 0) return
+
+    if (!previousQuote.current || previousQuote.current.ticker !== ticker) {
+      previousQuote.current = { ticker, price }
+      if (quoteAnnouncementRef.current) quoteAnnouncementRef.current.textContent = ''
+      return
+    }
+
+    if (previousQuote.current.price === price) return
+
+    previousQuote.current = { ticker, price }
+    if (quoteAnnouncementRef.current) {
+      quoteAnnouncementRef.current.textContent = `New quote for ${displayStock.name}: ${formatMoney(price)}`
+    }
+  }, [displayStock.name, displayStock.price, ticker])
+
+  useEffect(() => {
     const previousTitle = document.title
     document.title = `Tradevise | ${headerStock.name}`
 
@@ -140,6 +162,7 @@ export default function StockDetailPage() {
         />
       </div>
       <DetailHeader {...displayStock} />
+      <div ref={quoteAnnouncementRef} aria-live="polite" aria-atomic="true" className="sr-only" />
       <div className="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_19.6875rem]">
         <div className="flex-1 h-111.5 rounded-xl">
           <StockChart ticker={ticker} range={range} onRangeChange={setRange} data={chart} />

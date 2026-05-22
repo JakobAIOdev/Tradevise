@@ -170,6 +170,8 @@ const StockChart = ({ ticker, range, onRangeChange, data, title }: StockChartPro
               tick={AXIS_TICK_STYLE}
               dy={16}
               tickFormatter={(value) => {
+                if (range === 'intraday') return formatDate(value, range)
+
                 const point = points[Math.round(value)]
                 return formatDate(point?.time ?? value, range)
               }}

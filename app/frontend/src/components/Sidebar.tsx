@@ -1,5 +1,6 @@
 import { ArrowUpDown, LayoutDashboard, Search, Trophy, Users, Wallet } from 'lucide-react'
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import NavItem from './NavItem'
 import { useAuthStore } from '../stores/authStore'
 import { usePortfolios } from '../hooks/usePortfolios'
@@ -35,9 +36,14 @@ export default function Sidebar({ collapsed, mobileOpen, onNavigate }: SidebarPr
       md:static md:z-50 md:shrink-0 md:translate-x-0 md:shadow-none
       ${collapsed ? 'md:w-64 md:px-10' : 'md:w-[240px] md:px-15'}`}
       >
-        <p className="font-bold text-[32px] tracking-[-1%] text-text text-center justify-center transition-colors duration-200 ease-out">
+        <Link
+          to="/"
+          onClick={onNavigate}
+          aria-label="Go to home"
+          className="font-bold text-[32px] tracking-[-1%] text-text text-center justify-center transition-colors duration-200 ease-out hover:text-muted"
+        >
           {collapsed ? 'T' : 'Tradevise'}
-        </p>
+        </Link>
 
         <nav className="flex flex-col gap-8 flex-1 pt-8.75">
           {NAV_ITEMS.map((item) => (

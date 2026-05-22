@@ -6,6 +6,8 @@ type CustomTooltipProps = TooltipContentProps & {
   source: ChartHistorySource
 }
 
+const CHART_TIME_ZONE = 'Europe/Berlin'
+
 export function CustomTooltip({ active, payload, source }: CustomTooltipProps) {
   if (!active || !payload || payload.length === 0) return null
 
@@ -19,12 +21,13 @@ export function CustomTooltip({ active, payload, source }: CustomTooltipProps) {
           month: 'short',
           hour: 'numeric',
           minute: '2-digit',
-          timeZone: 'UTC',
+          timeZone: CHART_TIME_ZONE,
         }
       : {
           day: 'numeric',
           month: 'short',
           year: 'numeric',
+          timeZone: CHART_TIME_ZONE,
         }
 
   const formattedDate = new Intl.DateTimeFormat('de-AT', formatOptions).format(

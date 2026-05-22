@@ -100,6 +100,8 @@ type LeaderboardBaseline = {
 
 type PrismaClientLike = PrismaService | Prisma.TransactionClient;
 
+const LANG_SCHWARZ_TIME_ZONE = 'Europe/Berlin';
+
 const portfolioSummarySelect = {
   id: true,
   name: true,
@@ -364,8 +366,7 @@ export class PortfolioService {
       range === 'ALL'
         ? await this.resolveAllRangeStart(portfolio.id, portfolio.createdAt)
         : start;
-    const timelineEnd =
-      source === 'intraday' ? this.toIntradayChartDate(end) : end;
+    const timelineEnd = end;
 
     const normalizedTransactions = await this.loadPortfolioChartTransactions(
       portfolio.id,
@@ -1213,10 +1214,7 @@ export class PortfolioService {
         price: this.toNumber(transaction.price),
         total: this.toNumber(transaction.total),
         time: Math.floor(
-          (source === 'intraday'
-            ? this.toIntradayChartDate(transaction.createdAt)
-            : transaction.createdAt
-          ).getTime() / 1000,
+          transaction.createdAt.getTime() / 1000,
         ),
       }),
     );
@@ -1465,7 +1463,20 @@ export class PortfolioService {
 
     switch (range) {
       case 'intraday':
-        start.setUTCHours(7, 0, 0, 0);
+        {
+          const { year, month, day } = this.getZonedDateParts(
+            end,
+            LANG_SCHWARZ_TIME_ZONE,
+          );
+          const intradayStart = this.zonedDateTimeToUtcDate(
+            LANG_SCHWARZ_TIME_ZONE,
+            year,
+            month,
+            day,
+            7,
+          );
+          start.setTime(intradayStart.getTime());
+        }
         return { start, end, source: 'intraday' as const };
       case '1M':
         start.setMonth(start.getMonth() - 1);
@@ -1487,8 +1498,61 @@ export class PortfolioService {
     return { start, end, source: 'daily' as const };
   }
 
-  private toIntradayChartDate(date: Date) {
-    return new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
+  private getZonedDateParts(date: Date, timeZone: string) {
+    const parts = new Intl.DateTimeFormat('en-CA', {
+      timeZone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).formatToParts(date);
+    const partValue = (type: string) =>
+      Number(parts.find((part) => part.type === type)?.value);
+
+    return {
+      year: partValue('year'),
+      month: partValue('month'),
+      day: partValue('day'),
+    };
+  }
+
+  private zonedDateTimeToUtcDate(
+    timeZone: string,
+    year: number,
+    month: number,
+    day: number,
+    hour: number,
+  ) {
+    const utcGuess = new Date(Date.UTC(year, month - 1, day, hour, 0, 0, 0));
+    const offset = this.getTimeZoneOffsetMs(timeZone, utcGuess);
+    const correctedDate = new Date(utcGuess.getTime() - offset);
+    const correctedOffset = this.getTimeZoneOffsetMs(timeZone, correctedDate);
+
+    return new Date(utcGuess.getTime() - correctedOffset);
+  }
+
+  private getTimeZoneOffsetMs(timeZone: string, date: Date) {
+    const parts = new Intl.DateTimeFormat('en-CA', {
+      timeZone,
+      hourCycle: 'h23',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+    }).formatToParts(date);
+    const partValue = (type: string) =>
+      Number(parts.find((part) => part.type === type)?.value);
+    const zonedAsUtc = Date.UTC(
+      partValue('year'),
+      partValue('month') - 1,
+      partValue('day'),
+      partValue('hour'),
+      partValue('minute'),
+      partValue('second'),
+    );
+
+    return zonedAsUtc - date.getTime();
   }
 
   private async getPortfolioPriceHistory(

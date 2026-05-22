@@ -77,5 +77,5 @@ export function applyLiveValueDeltaToChart(
 }
 
 function getIntradayChartTimestamp(date: Date) {
-  return Math.floor((date.getTime() - date.getTimezoneOffset() * 60_000) / 1000)
+  return Math.floor(date.getTime() / 1000)
 }

@@ -11,16 +11,16 @@ export default function StatisticContainer({
   fullWidth = false,
 }: StatisticContainerProps) {
   return (
-    <li
+    <div
       className={`flex min-h-15 flex-col justify-between gap-1 border-b border-border/60 pb-2 last:border-b-0 ${
         fullWidth ? 'col-span-2' : ''
       }`}
     >
-      <span className="text-muted text-small leading-tight">{label}</span>
-      <span className="text-text text-body tabular-nums leading-tight">
+      <dt className="text-muted text-small leading-tight">{label}</dt>
+      <dd className="text-text text-body tabular-nums leading-tight">
         {value}
         {suffix ? ` ${suffix}` : ''}
-      </span>
-    </li>
+      </dd>
+    </div>
   )
 }

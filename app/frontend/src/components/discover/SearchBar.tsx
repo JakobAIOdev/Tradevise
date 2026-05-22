@@ -20,7 +20,10 @@ function SearchResultLogo({ logoUrl, symbol }: SearchResultLogoProps) {
 
   if (!logoUrl || hasError) {
     return (
-      <span className="flex h-7 w-7 items-center justify-center rounded-full border border-border bg-surface-hover text-xs font-semibold text-text">
+      <span
+        aria-hidden="true"
+        className="flex h-7 w-7 items-center justify-center rounded-full border border-border bg-surface-hover text-xs font-semibold text-text"
+      >
         {symbol.charAt(0)}
       </span>
     )

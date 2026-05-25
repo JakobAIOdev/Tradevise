@@ -40,27 +40,27 @@ export default function PositionSummary({ holding, isLoading = false }: Position
       {isLoading ? (
         <p className="mt-6 text-small text-muted">Loading position...</p>
       ) : holding ? (
-        <div className="mt-5 grid grid-cols-2 gap-x-8 gap-y-2">
+        <dl className="mt-5 grid grid-cols-2 gap-x-8 gap-y-2">
           <div>
-            <p className="text-xs text-muted">Market Value</p>
-            <p className="text-body text-text tabular-nums">{formatMoney(holding.marketValue)}</p>
+            <dt className="text-xs text-muted">Market Value</dt>
+            <dd className="text-body text-text tabular-nums">{formatMoney(holding.marketValue)}</dd>
           </div>
           <div>
-            <p className="text-xs text-muted">Shares</p>
-            <p className="text-body text-text tabular-nums">{formatShares(holding.quantity)}</p>
+            <dt className="text-xs text-muted">Shares</dt>
+            <dd className="text-body text-text tabular-nums">{formatShares(holding.quantity)}</dd>
           </div>
           <div>
-            <p className="text-xs text-muted">Avg Buy</p>
-            <p className="text-body text-text tabular-nums">{formatMoney(holding.averagePrice)}</p>
+            <dt className="text-xs text-muted">Avg Buy</dt>
+            <dd className="text-body text-text tabular-nums">{formatMoney(holding.averagePrice)}</dd>
           </div>
           <div>
-            <p className="text-xs text-muted">Profit/Loss</p>
-            <p className={`text-body tabular-nums ${profitLossClass}`}>
+            <dt className="text-xs text-muted">Profit/Loss</dt>
+            <dd className={`text-body tabular-nums ${profitLossClass}`}>
               {isPositive ? '+ ' : '- '}
               {formatMoney(Math.abs(profitLoss))}
-            </p>
+            </dd>
           </div>
-        </div>
+        </dl>
       ) : (
         <p className="mt-6 text-small text-muted">You do not own this stock yet.</p>
       )}

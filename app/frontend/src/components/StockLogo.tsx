@@ -12,6 +12,7 @@ export default function StockLogo({ src, ticker, size = 48 }: StockLogoProps) {
   if (error || !src) {
     return (
       <div
+        aria-hidden="true"
         style={{ width: size, height: size }}
         className="rounded-xl bg-surface-hover border border-border flex items-center justify-center shrink-0"
       >
@@ -23,7 +24,7 @@ export default function StockLogo({ src, ticker, size = 48 }: StockLogoProps) {
   return (
     <img
       src={src}
-      alt={ticker}
+      alt=""
       onError={() => setError(true)}
       style={{ width: size, height: size }}
       className="rounded-xl object-contain shrink-0"

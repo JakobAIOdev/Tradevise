@@ -58,11 +58,11 @@ export default function KeyStatistics({ statistics, isLoading = false }: KeyStat
         </CardTitle>
       }
     >
-      <ul className="grid flex-1 grid-cols-2 content-between gap-x-5 gap-y-3">
+      <dl className="grid flex-1 grid-cols-2 content-between gap-x-5 gap-y-3">
         {stats.map((stat) => (
           <StatisticContainer key={stat.label} {...stat} fullWidth={stat.label === 'Exchange'} />
         ))}
-      </ul>
+      </dl>
     </Card>
   )
 }

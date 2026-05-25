@@ -7,13 +7,13 @@
   --color-surface: #ffffff;
   --color-surface-hover: #f3f4f6;
   --color-text: #1a2235;
-  --color-muted: #6b7280;
+  --color-muted: #656c79;
   --color-border: #e5e7eb;
   --color-sparkline: #373535;
 
-  --color-bullish: #01af44;
-  --color-bearish: #ff3a3a;
-  --color-error: #ef4444;
+  --color-bullish: #008533;
+  --color-bearish: #d93131;
+  --color-error: #d93131;
   --color-warning: #f6d7a3;
   --color-success: #14dd9a;
 
@@ -53,7 +53,7 @@
   --color-surface: #161b26;
   --color-surface-hover: #1e2536;
   --color-text: #f1f3f5;
-  --color-muted: #8b95a3;
+  --color-muted: #99a4b3;
   --color-border: #2a3040;
   --color-sparkline: #ffffff;
 

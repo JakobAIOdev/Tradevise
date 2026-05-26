@@ -23,8 +23,8 @@ export default function DetailHeader({
           <div className="flex items-center gap-6">
             <StockLogo src={logo} ticker={ticker} size={72} />
             <div>
-              <h2 className="text-h2 text-text">{name}</h2>
-              <h3 className="text-h3 text-muted">{ticker}</h3>
+              <h1 className="text-h2 text-text">{name}</h1>
+              <p className="text-h3 text-muted">{ticker}</p>
             </div>
           </div>
 

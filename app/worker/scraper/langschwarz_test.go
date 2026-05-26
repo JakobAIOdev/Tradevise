@@ -29,6 +29,21 @@ func TestParseSeriesPointsSkipsInvalidValues(t *testing.T) {
 	}
 }
 
+func TestParseIntradaySeriesPointsInterpretsLangSchwarzMillisAsBerlinTime(t *testing.T) {
+	got := parseIntradaySeriesPoints([][2]float64{
+		{1712576400000, 195.25},
+	})
+
+	if len(got) != 1 {
+		t.Fatalf("len(parseIntradaySeriesPoints()) = %d, want %d", len(got), 1)
+	}
+
+	want := time.Date(2024, time.April, 8, 11, 40, 0, 0, berlinLocation).Unix()
+	if got[0].Time != want || got[0].Price != 195.25 {
+		t.Fatalf("point[0] = %+v, want time %d and price 195.25", got[0], want)
+	}
+}
+
 func TestLatestPositivePointUsesLastValidPoint(t *testing.T) {
 	got, ok := latestPositivePoint(parseSeriesPoints([][2]float64{
 		{100000, 10.5},

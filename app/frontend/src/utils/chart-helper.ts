@@ -19,7 +19,7 @@ function getZonedDateParts(timestamp: number) {
   }
 }
 
-function getTimeZoneOffset(date: Date) {
+function getZonedDateTimeParts(date: Date) {
   const parts = new Intl.DateTimeFormat('en-CA', {
     timeZone: CHART_TIME_ZONE,
     hourCycle: 'h23',
@@ -32,20 +32,39 @@ function getTimeZoneOffset(date: Date) {
   }).formatToParts(date)
 
   const partValue = (type: string) => Number(parts.find((part) => part.type === type)?.value)
+
+  return {
+    year: partValue('year'),
+    month: partValue('month'),
+    day: partValue('day'),
+    hour: partValue('hour'),
+    minute: partValue('minute'),
+    second: partValue('second'),
+  }
+}
+
+function getTimeZoneOffset(date: Date) {
+  const parts = getZonedDateTimeParts(date)
   const zonedAsUtc = Date.UTC(
-    partValue('year'),
-    partValue('month') - 1,
-    partValue('day'),
-    partValue('hour'),
-    partValue('minute'),
-    partValue('second'),
+    parts.year,
+    parts.month - 1,
+    parts.day,
+    parts.hour,
+    parts.minute,
+    parts.second,
   )
 
   return zonedAsUtc - date.getTime()
 }
 
-function zonedTimeToTimestamp(year: number, month: number, day: number, hour: number) {
-  const utcGuess = new Date(Date.UTC(year, month - 1, day, hour, 0, 0, 0))
+function zonedTimeToTimestamp(
+  year: number,
+  month: number,
+  day: number,
+  hour: number,
+  minute = 0,
+) {
+  const utcGuess = new Date(Date.UTC(year, month - 1, day, hour, minute, 0, 0))
   const offset = getTimeZoneOffset(utcGuess)
   const correctedDate = new Date(utcGuess.getTime() - offset)
   const correctedOffset = getTimeZoneOffset(correctedDate)
@@ -56,12 +75,22 @@ function zonedTimeToTimestamp(year: number, month: number, day: number, hour: nu
 export function getIntradayAxisConfig(anchorTimestamp?: number) {
   const anchor = anchorTimestamp ?? Math.floor(Date.now() / 1000)
   const { year, month, day } = getZonedDateParts(anchor)
+  const now = getZonedDateTimeParts(new Date())
 
-  const atTime = (hour: number) => zonedTimeToTimestamp(year, month, day, hour)
+  const atTime = (hour: number, minute = 0) => zonedTimeToTimestamp(year, month, day, hour, minute)
+  const start = atTime(7)
+  const close = atTime(23)
+  const isToday = now.year === year && now.month === month && now.day === day
+  const current = isToday ? atTime(now.hour, now.minute) : close
+  const end = Math.min(Math.max(current, start), close)
+
+  const tickHours = [7, 11, 15, 19, 23]
+  const ticks = tickHours.map((hour) => atTime(hour)).filter((tick) => tick >= start && tick < end)
+  if (!ticks.includes(end)) ticks.push(end)
 
   return {
-    domain: [atTime(7), atTime(23)] as const,
-    ticks: [atTime(7), atTime(11), atTime(15), atTime(19), atTime(23)],
+    domain: [start, end] as const,
+    ticks,
   }
 }
 

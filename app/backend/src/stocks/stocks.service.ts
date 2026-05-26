@@ -147,6 +147,7 @@ const DISCOVER_STOCKS: DiscoverStockDefinition[] = [
 ];
 
 const CHART_RANGES = ['intraday', '1M', '6M', '1Y', '3Y', 'ALL'] as const;
+const LANG_SCHWARZ_TIME_ZONE = 'Europe/Berlin';
 
 function normalizeSymbol(symbol: string): string {
   return symbol.trim().toUpperCase();
@@ -690,25 +691,84 @@ export class StocksService {
     }
 
     const firstPoint = points[0];
-    const firstPointDate = new Date(firstPoint.time * 1000);
-    const dayStart =
-      Date.UTC(
-        firstPointDate.getUTCFullYear(),
-        firstPointDate.getUTCMonth(),
-        firstPointDate.getUTCDate(),
+    const { year, month, day } = this.getZonedDateParts(
+      new Date(firstPoint.time * 1000),
+      LANG_SCHWARZ_TIME_ZONE,
+    );
+    const dayStart = Math.floor(
+      this.zonedDateTimeToUtcDate(
+        LANG_SCHWARZ_TIME_ZONE,
+        year,
+        month,
+        day,
         7,
-        0,
-        0,
-        0,
-      ) / 1000;
+      ).getTime() / 1000,
+    );
 
     return [
       {
-        time: Math.min(dayStart, firstPoint.time - 1),
+        time: Math.max(dayStart, firstPoint.time - 1),
         price: previousClose,
       },
       ...points,
     ];
+  }
+
+  private getZonedDateParts(date: Date, timeZone: string) {
+    const parts = new Intl.DateTimeFormat('en-CA', {
+      timeZone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).formatToParts(date);
+    const partValue = (type: string) =>
+      Number(parts.find((part) => part.type === type)?.value);
+
+    return {
+      year: partValue('year'),
+      month: partValue('month'),
+      day: partValue('day'),
+    };
+  }
+
+  private zonedDateTimeToUtcDate(
+    timeZone: string,
+    year: number,
+    month: number,
+    day: number,
+    hour: number,
+  ) {
+    const utcGuess = new Date(Date.UTC(year, month - 1, day, hour, 0, 0, 0));
+    const offset = this.getTimeZoneOffsetMs(timeZone, utcGuess);
+    const correctedDate = new Date(utcGuess.getTime() - offset);
+    const correctedOffset = this.getTimeZoneOffsetMs(timeZone, correctedDate);
+
+    return new Date(utcGuess.getTime() - correctedOffset);
+  }
+
+  private getTimeZoneOffsetMs(timeZone: string, date: Date) {
+    const parts = new Intl.DateTimeFormat('en-CA', {
+      timeZone,
+      hourCycle: 'h23',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+    }).formatToParts(date);
+    const partValue = (type: string) =>
+      Number(parts.find((part) => part.type === type)?.value);
+    const zonedAsUtc = Date.UTC(
+      partValue('year'),
+      partValue('month') - 1,
+      partValue('day'),
+      partValue('hour'),
+      partValue('minute'),
+      partValue('second'),
+    );
+
+    return zonedAsUtc - date.getTime();
   }
 
   private applyLatestPriceToLastPoint(

@@ -347,6 +347,38 @@ func parseSeriesPoints(data [][2]float64) []model.PricePoint {
 	return points
 }
 
+func parseIntradaySeriesPoints(data [][2]float64) []model.PricePoint {
+	points := make([]model.PricePoint, 0, len(data))
+	for _, pair := range data {
+		timestampMillis := int64(pair[0])
+		price := pair[1]
+		if timestampMillis <= 0 || price <= 0 {
+			continue
+		}
+
+		points = append(points, model.PricePoint{
+			Time:  langSchwarzLocalMillisToUnix(timestampMillis),
+			Price: price,
+		})
+	}
+
+	return points
+}
+
+func langSchwarzLocalMillisToUnix(timestampMillis int64) int64 {
+	localTimestamp := time.UnixMilli(timestampMillis).UTC()
+	return time.Date(
+		localTimestamp.Year(),
+		localTimestamp.Month(),
+		localTimestamp.Day(),
+		localTimestamp.Hour(),
+		localTimestamp.Minute(),
+		localTimestamp.Second(),
+		localTimestamp.Nanosecond(),
+		berlinLocation,
+	).Unix()
+}
+
 func latestPositivePoint(points []model.PricePoint) (model.PricePoint, bool) {
 	for i := len(points) - 1; i >= 0; i-- {
 		if points[i].Time > 0 && points[i].Price > 0 {
@@ -449,7 +481,7 @@ func fiftyTwoWeekRange(history []model.PricePoint) (float64, float64) {
 }
 
 func chartPoints(chart langSchwarzChartResponse) ([]model.PricePoint, []model.PricePoint) {
-	return parseSeriesPoints(chart.Series.Intraday.Data), parseSeriesPoints(chart.Series.History.Data)
+	return parseIntradaySeriesPoints(chart.Series.Intraday.Data), parseSeriesPoints(chart.Series.History.Data)
 }
 
 func FetchMarketSnapshot(symbol string) (MarketSnapshot, error) {
@@ -550,7 +582,7 @@ func FetchIntraday(symbol string) ([]model.PricePoint, string, error) {
 		return nil, "", err
 	}
 
-	points := parseSeriesPoints(chart.Series.Intraday.Data)
+	points := parseIntradaySeriesPoints(chart.Series.Intraday.Data)
 
 	return points, langSchwarzCurrency, nil
 }

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { ChevronRight, X } from 'lucide-react'
+import { ChevronRight, Wallet, X } from 'lucide-react'
 import { usePortfolio } from '../../hooks/usePortfolio'
 import { useTradeStock } from '../../hooks/useTradeStock'
 import { formatInputNumber, formatMoney, formatShares } from '../../utils/format'
@@ -49,6 +49,7 @@ export default function BuyModalContent({
   )
 
   const orderAmount = getOrderAmount(quantity, currentPrice)
+  const remainingCash = Math.max(availableCash - orderAmount, 0)
   const canSubmit =
     Boolean(symbol) &&
     Boolean(currentPrice) &&
@@ -122,7 +123,7 @@ export default function BuyModalContent({
       <div className="flex items-start justify-between gap-4">
         <div>
           <h2 className="text-h2 text-text">Invest in {stockLabel}</h2>
-          <p className="mt-1 text-small text-muted">{formatMoney(availableCash)} available</p>
+          <p className="mt-1 text-small text-muted">Review your order before buying.</p>
         </div>
         <Button variant="secondary" size="icon" onClick={onClose} aria-label="Close buy modal">
           <X size={20} strokeWidth={1.5} />
@@ -135,6 +136,28 @@ export default function BuyModalContent({
           options={BUY_MODE_OPTIONS}
           onChange={(value) => handleModeChange(value as BuyMode)}
         />
+      </div>
+
+      <div className="rounded-xl border border-border bg-surface-hover px-18 py-15">
+        <div className="flex items-center justify-between gap-12">
+          <div className="flex min-w-0 items-center gap-12">
+            <span className="flex h-[48px] w-[48px] shrink-0 items-center justify-center rounded-xl border border-border bg-surface text-text">
+              <Wallet size={26} strokeWidth={1.8} aria-hidden="true" />
+            </span>
+            <div className="min-w-0">
+              <p className="text-small font-semibold text-muted">Available cash</p>
+              <p className="text-h3 font-bold leading-tight text-text tabular-nums">
+                {formatMoney(availableCash)}
+              </p>
+            </div>
+          </div>
+          <div className="shrink-0 text-right">
+            <p className="text-small font-semibold text-muted">After order</p>
+            <p className="text-body font-bold text-text tabular-nums">
+              {formatMoney(remainingCash)}
+            </p>
+          </div>
+        </div>
       </div>
 
       <div className="min-h-38 space-y-3">

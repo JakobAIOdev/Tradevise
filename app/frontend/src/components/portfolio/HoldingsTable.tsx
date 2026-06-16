@@ -25,7 +25,7 @@ export default function HoldingsTable({ data }: HoldingsTableProps) {
   })
 
   return (
-    <Card as="section" padding="none" className="holdings-layout overflow-hidden">
+    <Card as="section" padding="none" className="holdings-layout overflow-visible">
       {table.getRowModel().rows.length > 0 ? (
         <>
           <div className="holdings-mobile divide-y divide-border">

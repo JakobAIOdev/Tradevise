@@ -27,9 +27,14 @@ vi.mock('../../hooks/useGroups', () => ({
   }),
 }))
 
-function renderNewGroupModal() {
+function renderNewGroupModal(initialMode?: 'create' | 'join') {
   return render(
-    <NewGroupModal isOpen={true} onClose={mocks.onClose} onGroupSelected={mocks.onGroupSelected} />,
+    <NewGroupModal
+      isOpen={true}
+      initialMode={initialMode}
+      onClose={mocks.onClose}
+      onGroupSelected={mocks.onGroupSelected}
+    />,
   )
 }
 
@@ -68,17 +73,14 @@ describe('NewGroupModal', () => {
   })
 
   it('shows the group code field when switching to join mode', () => {
-    renderNewGroupModal()
-
-    fireEvent.click(screen.getByRole('button', { name: /join with code/i }))
+    renderNewGroupModal('join')
 
     expect(screen.getByLabelText(/group code/i)).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /join group/i })).toBeInTheDocument()
   })
 
   it('converts the group code to uppercase', () => {
-    renderNewGroupModal()
-
-    fireEvent.click(screen.getByRole('button', { name: /join with code/i }))
+    renderNewGroupModal('join')
 
     const input = screen.getByLabelText(/group code/i)
     fireEvent.change(input, {
@@ -89,9 +91,8 @@ describe('NewGroupModal', () => {
   })
 
   it('joins a group with the entered code', async () => {
-    renderNewGroupModal()
+    renderNewGroupModal('join')
 
-    fireEvent.click(screen.getByRole('button', { name: /join with code/i }))
     fireEvent.change(screen.getByLabelText(/group code/i), {
       target: { value: 'abc123' },
     })

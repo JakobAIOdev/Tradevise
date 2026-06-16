@@ -2,11 +2,16 @@ import StatisticContainer from './StatisticContainer'
 import { LoaderCircle } from 'lucide-react'
 import type { Statistic, StockStatistics } from '../../types'
 import { formatMoney } from '../../utils/format'
+import { financialTermDescriptions } from '../../utils/financial-terms'
 import Card, { CardTitle } from '../Card'
 
 type KeyStatisticsProps = {
   statistics?: StockStatistics
   isLoading?: boolean
+}
+
+type StatisticWithTooltip = Statistic & {
+  tooltip?: string
 }
 
 function formatStatisticMoney(
@@ -21,16 +26,40 @@ function formatTextValue(value: string | null | undefined) {
   return value?.trim() || '-'
 }
 
-function buildStatistics(statistics?: StockStatistics): Statistic[] {
+function buildStatistics(statistics?: StockStatistics): StatisticWithTooltip[] {
   const currency = statistics?.currency
 
   return [
-    { label: 'Previous Close', value: formatStatisticMoney(statistics?.previousClose, currency) },
-    { label: 'Day High', value: formatStatisticMoney(statistics?.dayHigh, currency) },
-    { label: 'Day Low', value: formatStatisticMoney(statistics?.dayLow, currency) },
-    { label: '52W High', value: formatStatisticMoney(statistics?.fiftyTwoWeekHigh, currency) },
-    { label: '52W Low', value: formatStatisticMoney(statistics?.fiftyTwoWeekLow, currency) },
-    { label: 'Exchange', value: formatTextValue(statistics?.exchange) },
+    {
+      label: 'Previous Close',
+      value: formatStatisticMoney(statistics?.previousClose, currency),
+      tooltip: financialTermDescriptions.previousClose,
+    },
+    {
+      label: 'Day High',
+      value: formatStatisticMoney(statistics?.dayHigh, currency),
+      tooltip: financialTermDescriptions.dayHigh,
+    },
+    {
+      label: 'Day Low',
+      value: formatStatisticMoney(statistics?.dayLow, currency),
+      tooltip: financialTermDescriptions.dayLow,
+    },
+    {
+      label: '52W High',
+      value: formatStatisticMoney(statistics?.fiftyTwoWeekHigh, currency),
+      tooltip: financialTermDescriptions.fiftyTwoWeekHigh,
+    },
+    {
+      label: '52W Low',
+      value: formatStatisticMoney(statistics?.fiftyTwoWeekLow, currency),
+      tooltip: financialTermDescriptions.fiftyTwoWeekLow,
+    },
+    {
+      label: 'Exchange',
+      value: formatTextValue(statistics?.exchange),
+      tooltip: financialTermDescriptions.exchange,
+    },
   ]
 }
 

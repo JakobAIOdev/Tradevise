@@ -8,7 +8,9 @@ import {
   formatSignedPercent,
 } from '../../utils/format'
 import { getSignedTrendTextClass } from '../../utils/trend'
+import { financialTermDescriptions } from '../../utils/financial-terms'
 import { buildHoldingLinkState } from './holdingLinkState'
+import InfoTooltip from '../InfoTooltip'
 
 export type PortfolioTableRow = {
   id: string
@@ -27,6 +29,23 @@ export type PortfolioTableRow = {
 }
 
 const columnHelper = createColumnHelper<PortfolioTableRow>()
+
+function renderHeaderWithTooltip({
+  label,
+  tooltip,
+  align = 'right',
+}: {
+  label: string
+  tooltip: string
+  align?: 'left' | 'right'
+}) {
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      <span>{label}</span>
+      <InfoTooltip text={tooltip} align={align} />
+    </span>
+  )
+}
 
 export const columns = [
   columnHelper.display({
@@ -55,7 +74,9 @@ export const columns = [
 
   columnHelper.accessor('currentPrice', {
     id: 'price',
-    header: () => <span>Price</span>,
+    header: () => (
+      renderHeaderWithTooltip({ label: 'Price', tooltip: financialTermDescriptions.price })
+    ),
     cell: ({ getValue }) => (
       <div className="text-right text-body text-text">{formatMoney(getValue())}</div>
     ),
@@ -63,7 +84,9 @@ export const columns = [
 
   columnHelper.accessor('marketValue', {
     id: 'value',
-    header: () => <span>Value</span>,
+    header: () => (
+      renderHeaderWithTooltip({ label: 'Value', tooltip: financialTermDescriptions.value })
+    ),
     cell: ({ getValue }) => (
       <div className="text-right text-body text-text">{formatMoney(getValue())}</div>
     ),
@@ -71,7 +94,9 @@ export const columns = [
 
   columnHelper.display({
     id: 'today',
-    header: () => <span>Today</span>,
+    header: () => (
+      renderHeaderWithTooltip({ label: 'Today', tooltip: financialTermDescriptions.today })
+    ),
     cell: ({ row }) => {
       const item = row.original
       const tone = getSignedTrendTextClass(item.todayChange)
@@ -89,7 +114,12 @@ export const columns = [
 
   columnHelper.display({
     id: 'totalPl',
-    header: () => <span>Total P/L</span>,
+    header: () => (
+      renderHeaderWithTooltip({
+        label: 'Total P/L',
+        tooltip: financialTermDescriptions.totalProfitLoss,
+      })
+    ),
     cell: ({ row }) => {
       const item = row.original
       const tone = getSignedTrendTextClass(item.profitLoss)

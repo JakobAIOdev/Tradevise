@@ -45,7 +45,10 @@ describe('BuyModalContent', () => {
   it('shows the default buy amount and submits one share', () => {
     renderBuyModalContent()
 
-    expect(screen.getByText('1.000,00 € available')).toBeInTheDocument()
+    expect(screen.getByText('Available cash')).toBeInTheDocument()
+    expect(screen.getByText('1.000,00 €')).toBeInTheDocument()
+    expect(screen.getByText('After order')).toBeInTheDocument()
+    expect(screen.getByText('875,00 €')).toBeInTheDocument()
     expect(screen.getByLabelText(/amount/i)).toHaveValue('125')
     expect(screen.getByText('1 shares')).toBeInTheDocument()
 

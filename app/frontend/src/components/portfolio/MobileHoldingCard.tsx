@@ -10,6 +10,7 @@ import {
 } from '../../utils/format'
 import { getSignedTrendTextClass } from '../../utils/trend'
 import HoldingMetric from './HoldingMetric'
+import { financialTermDescriptions } from '../../utils/financial-terms'
 
 type MobileHoldingCardProps = {
   item: PortfolioTableRow
@@ -34,8 +35,17 @@ export default function MobileHoldingCard({ item }: MobileHoldingCardProps) {
         />
       </div>
       <div className="mt-18 grid grid-cols-2 gap-x-12 gap-y-15">
-        <HoldingMetric label="Price" value={formatMoney(item.currentPrice)} />
-        <HoldingMetric label="Value" value={formatMoney(item.marketValue)} align="right" />
+        <HoldingMetric
+          label="Price"
+          value={formatMoney(item.currentPrice)}
+          tooltip={financialTermDescriptions.price}
+        />
+        <HoldingMetric
+          label="Value"
+          value={formatMoney(item.marketValue)}
+          tooltip={financialTermDescriptions.value}
+          align="right"
+        />
         <HoldingMetric
           label="Today"
           value={formatSignedMoney(item.todayChange)}
@@ -45,12 +55,14 @@ export default function MobileHoldingCard({ item }: MobileHoldingCardProps) {
               : undefined
           }
           tone={todayTone}
+          tooltip={financialTermDescriptions.today}
         />
         <HoldingMetric
           label="Total P/L"
           value={formatSignedMoney(item.profitLoss)}
           subValue={formatSignedPercent(item.totalPlPercent)}
           tone={totalTone}
+          tooltip={financialTermDescriptions.totalProfitLoss}
           align="right"
         />
       </div>

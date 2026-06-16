@@ -7,10 +7,11 @@ import Button from '../Button'
 import SegmentedControl from '../SegmentedControl'
 import TextField from '../TextField'
 
-type GroupModalMode = 'create' | 'join'
+export type GroupModalMode = 'create' | 'join'
 
 type NewGroupModalProps = {
   isOpen: boolean
+  initialMode?: GroupModalMode
   onClose: () => void
   onGroupSelected?: (groupId: string) => void
 }
@@ -26,8 +27,13 @@ function getGroupActionErrorMessage(mode: GroupModalMode) {
     : 'Could not join group. Check the invite code and try again.'
 }
 
-export default function NewGroupModal({ isOpen, onClose, onGroupSelected }: NewGroupModalProps) {
-  const [mode, setMode] = useState<GroupModalMode>('create')
+export default function NewGroupModal({
+  isOpen,
+  initialMode = 'create',
+  onClose,
+  onGroupSelected,
+}: NewGroupModalProps) {
+  const [mode, setMode] = useState<GroupModalMode>(initialMode)
   const [name, setName] = useState('')
   const [code, setCode] = useState('')
   const createGroup = useCreateGroup()
@@ -60,7 +66,7 @@ export default function NewGroupModal({ isOpen, onClose, onGroupSelected }: NewG
   return (
     <Modal isOpen={isOpen} onClose={onClose}>
       <div className="flex flex-col gap-40">
-        <NewGroupModalHeader onClose={onClose} />
+        <NewGroupModalHeader mode={mode} onClose={onClose} />
         <GroupModeToggle mode={mode} onChange={setMode} />
 
         <form className="flex flex-col gap-40" onSubmit={handleSubmit}>
@@ -79,12 +85,18 @@ export default function NewGroupModal({ isOpen, onClose, onGroupSelected }: NewG
   )
 }
 
-function NewGroupModalHeader({ onClose }: { onClose: () => void }) {
+function NewGroupModalHeader({ mode, onClose }: { mode: GroupModalMode; onClose: () => void }) {
   return (
     <div className="flex items-start justify-between gap-16">
       <div>
-        <h2 className="text-h3 font-medium text-text">New Group</h2>
-        <p className="mt-4 text-small text-muted">Create a group or join one by code.</p>
+        <h2 className="text-h3 font-medium text-text">
+          {mode === 'create' ? 'Create group' : 'Join group'}
+        </h2>
+        <p className="mt-4 text-small text-muted">
+          {mode === 'create'
+            ? 'Start a new trading group and invite others with a code.'
+            : 'Enter an invite code to join an existing trading group.'}
+        </p>
       </div>
       <Button variant="secondary" size="icon" onClick={onClose} aria-label="Close">
         <X size={18} strokeWidth={1.5} />

@@ -1,4 +1,4 @@
-import { Plus } from 'lucide-react'
+import { LogIn, Plus } from 'lucide-react'
 import { useState } from 'react'
 import { useGroups } from '../../hooks/useGroups'
 import type { GroupSummary } from '../../types'
@@ -7,24 +7,42 @@ import GroupDetailsModal from './GroupDetailsModal'
 import GroupOverviewCard, { GroupCardSkeleton } from './GroupOverviewCard'
 import NewGroupModal from './NewGroupModal'
 import Button from '../Button'
+import type { GroupModalMode } from './NewGroupModal'
 
 export default function GroupsOverview() {
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [modalMode, setModalMode] = useState<GroupModalMode>('create')
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null)
   const { data: groups = [], isError, isLoading } = useGroups()
 
+  function openGroupModal(mode: GroupModalMode) {
+    setModalMode(mode)
+    setIsModalOpen(true)
+  }
+
   return (
     <>
-      <div className="flex items-start justify-between gap-16 mb-40">
+      <div className="mb-40 flex flex-col gap-16 sm:flex-row sm:items-start sm:justify-between">
         <PageTitle title="Trading Groups" />
-        <Button
-          size="sm"
-          leading={<Plus size={16} strokeWidth={2.2} />}
-          onClick={() => setIsModalOpen(true)}
-          className="mt-2 shrink-0 rounded-2xl py-2.5"
-        >
-          New Group
-        </Button>
+        <div className="flex flex-wrap gap-8 sm:mt-2 sm:justify-end">
+          <Button
+            size="sm"
+            variant="secondary"
+            leading={<LogIn size={16} strokeWidth={2.2} />}
+            onClick={() => openGroupModal('join')}
+            className="shrink-0 rounded-2xl py-2.5"
+          >
+            Join group
+          </Button>
+          <Button
+            size="sm"
+            leading={<Plus size={16} strokeWidth={2.2} />}
+            onClick={() => openGroupModal('create')}
+            className="shrink-0 rounded-2xl py-2.5"
+          >
+            Create group
+          </Button>
+        </div>
       </div>
       <div className="mx-auto flex w-full max-w-171.5 flex-col gap-25">
         <GroupList
@@ -35,7 +53,9 @@ export default function GroupsOverview() {
         />
 
         <NewGroupModal
+          key={modalMode}
           isOpen={isModalOpen}
+          initialMode={modalMode}
           onClose={() => setIsModalOpen(false)}
           onGroupSelected={setSelectedGroupId}
         />

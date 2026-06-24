@@ -1,63 +1,87 @@
 # Tradevise
 
-Tradevise ist eine Web-App zur Portfolioverwaltung und Trading-Simulation. Nutzer koennen Portfolios erstellen, Aktien suchen und beobachten, Kauf- und Verkaufsorders simulieren, die Portfolio-Performance auswerten, Rankings vergleichen und sich in privaten Gruppen messen.
+Tradevise is a web app for portfolio management and trading simulation. Users can create portfolios, search for and watch stocks, simulate buy and sell orders, analyze portfolio performance, compare rankings, and compete in private groups.
 
-## Funktionen
+## Features
 
-- Registrierung und Login mit Access- und Refresh-Tokens
-- Portfolioverwaltung mit Cash-Bestand, Positionen, Transaktionen und aktivem Portfolio
-- Simulierte Kauf- und Verkaufsorders
-- Aktiensuche, Discovery-Ansicht, Detailseiten, Charts, Statistiken und Watchlists
-- Live-Preisupdates mit Redis-gestuetzter Datenhaltung
-- Globales Leaderboard und gruppenbasierte Portfolio-Rankings
-- Background-Worker zur Synchronisierung von Marktdaten
-- Docker-Setup fuer lokale Infrastruktur und produktionsnahes Deployment
+- Registration and login with access and refresh tokens
+- Portfolio management with cash balance, holdings, transactions, and active portfolio selection
+- Simulated buy and sell orders
+- Stock search, discovery view, detail pages, charts, statistics, and watchlists
+- Real live market data from Lang & Schwarz, with Redis-backed price updates
+- Global leaderboard and group-based portfolio rankings
+- Background worker for synchronizing market data
+- Docker setup for local infrastructure and production-like deployment
 
 ## Tech Stack
 
-| Bereich | Technologie |
+| Area | Technology |
 | --- | --- |
 | Frontend | React 19, Vite, TypeScript, Tailwind CSS, React Router, TanStack Query, Recharts, Zustand |
-| Backend | NestJS, TypeScript, Prisma, PostgreSQL, Redis, JWT-Authentifizierung |
+| Backend | NestJS, TypeScript, Prisma, PostgreSQL, Redis, JWT authentication |
 | Worker | Go, pgx, go-redis, cron jobs |
-| Infrastruktur | Docker Compose, Caddy, PostgreSQL, Redis |
+| Infrastructure | Docker Compose, Caddy, PostgreSQL, Redis |
 
-## Projektstruktur
+## Architecture
+
+```mermaid
+flowchart LR
+    user[User] --> frontend[Frontend<br/>React + Vite]
+    frontend --> backend[Backend API<br/>NestJS + Prisma]
+
+    backend --> postgres[(PostgreSQL<br/>users, portfolios, trades)]
+    backend --> redis[(Redis<br/>live prices + pub/sub)]
+
+    worker[Worker<br/>Go market data jobs] --> langschwarz[Lang & Schwarz<br/>real live market data]
+    worker --> postgres
+    worker --> redis
+
+    redis --> backend
+    backend --> frontend
+
+    docker[Docker Compose<br/>local + production-like stack] -. runs .-> frontend
+    docker -. runs .-> backend
+    docker -. runs .-> worker
+    docker -. runs .-> postgres
+    docker -. runs .-> redis
+```
+
+## Project Structure
 
 ```text
 .
-├── app
-│   ├── backend      # NestJS-API, Prisma-Schema und Migrationen
-│   ├── frontend     # React/Vite-Web-App
-│   └── worker       # Go-Background-Worker fuer Marktdaten-Jobs
-├── compose.yml      # Gemeinsame PostgreSQL- und Redis-Services
-├── compose.dev.yml  # Port-Bindings fuer Entwicklung
-├── compose.prod.yml # Produktionsnaher App-Stack
-├── Makefile         # Docker-Compose-Shortcuts
-└── .env.example     # Vorlage fuer Umgebungsvariablen
+|-- app
+|   |-- backend      # NestJS API, Prisma schema, and migrations
+|   |-- frontend     # React/Vite web app
+|   `-- worker       # Go background worker for market data jobs
+|-- compose.yml      # Shared PostgreSQL and Redis services
+|-- compose.dev.yml  # Port bindings for development
+|-- compose.prod.yml # Production-like app stack
+|-- Makefile         # Docker Compose shortcuts
+`-- .env.example     # Environment variable template
 ```
 
-## Voraussetzungen
+## Requirements
 
-- Docker und Docker Compose
-- Node.js und npm
+- Docker and Docker Compose
+- Node.js and npm
 - Go
 
-Die Subprojekte nutzen aktuelle Toolchain-Versionen:
+The subprojects use current toolchain versions:
 
 - Frontend: Vite, React, TypeScript
 - Backend: NestJS, Prisma
 - Worker: Go 1.26+
 
-## Umgebung
+## Environment
 
-Lege im Projektroot eine `.env` auf Basis der Vorlage an:
+Create a `.env` file in the project root from the template:
 
 ```bash
 cp .env.example .env
 ```
 
-Fuer das produktionsnahe Docker-Compose-Setup sind die Werte aus `.env.example` bereits auf Container-zu-Container-Kommunikation ausgelegt. Ersetze vor einer Veroeffentlichung unbedingt die Platzhalter:
+For the production-like Docker Compose setup, the values in `.env.example` are already configured for container-to-container communication. Replace the placeholders before publishing or deploying:
 
 ```env
 POSTGRES_PASSWORD=change-me-postgres-password
@@ -65,7 +89,7 @@ JWT_ACCESS_SECRET=change-me-access-secret
 JWT_REFRESH_SECRET=change-me-refresh-secret
 ```
 
-Wenn Backend oder Worker lokal ohne Docker gestartet werden, muessen die Verbindungen auf `localhost` zeigen:
+If the backend or worker is started locally without Docker, the connections must point to `localhost`:
 
 ```env
 DATABASE_URL=postgresql://tradevise:change-me-postgres-password@localhost:5433/tradevise
@@ -76,21 +100,21 @@ FRONTEND_ORIGIN=http://localhost:5173
 REFRESH_COOKIE_PATH=/auth
 ```
 
-Die API-URL fuer das Frontend in der Entwicklung ist in `app/frontend/.env.development` hinterlegt:
+The frontend development API URL is stored in `app/frontend/.env.development`:
 
 ```env
 VITE_API_BASE_URL=http://localhost:3000
 ```
 
-## Entwicklung
+## Development
 
-PostgreSQL und Redis starten:
+Start PostgreSQL and Redis:
 
 ```bash
 make dev-up
 ```
 
-Backend-Abhaengigkeiten installieren, Migrationen ausfuehren und API starten:
+Install backend dependencies, run migrations, and start the API:
 
 ```bash
 cd app/backend
@@ -99,7 +123,7 @@ npx prisma migrate dev --config=./prisma.config.ts
 npm run start:dev
 ```
 
-In einem zweiten Terminal das Frontend starten:
+In a second terminal, start the frontend:
 
 ```bash
 cd app/frontend
@@ -107,7 +131,7 @@ npm install
 npm run dev
 ```
 
-In einem dritten Terminal den Worker starten:
+In a third terminal, start the worker:
 
 ```bash
 cd app/worker
@@ -115,14 +139,14 @@ go mod download
 go run .
 ```
 
-Standard-URLs in der lokalen Entwicklung:
+Default URLs in local development:
 
 - Frontend: `http://localhost:5173`
 - Backend API: `http://localhost:3000`
 - PostgreSQL: `localhost:5433`
 - Redis: `localhost:6379`
 
-Entwicklungsinfrastruktur stoppen:
+Stop the development infrastructure:
 
 ```bash
 make dev-down
@@ -130,19 +154,19 @@ make dev-down
 
 ## Docker Deployment
 
-Vollstaendigen produktionsnahen Stack bauen und starten:
+Build and start the full production-like stack:
 
 ```bash
 make prod-up
 ```
 
-Das Frontend ist danach erreichbar unter:
+The frontend is then available at:
 
 ```text
 http://localhost:8080
 ```
 
-Nuetzliche Befehle:
+Useful commands:
 
 ```bash
 make prod-logs
@@ -151,7 +175,7 @@ make prod-restart
 make prod-down
 ```
 
-## Skripte
+## Scripts
 
 Backend:
 
@@ -181,9 +205,9 @@ go test ./...
 go run .
 ```
 
-## API-Ueberblick
+## API Overview
 
-Wichtige Backend-Endpunkte:
+Important backend endpoints:
 
 - `POST /auth/register`, `POST /auth/login`, `POST /auth/refresh`, `POST /auth/logout`
 - `GET /portfolios`, `POST /portfolios`, `PATCH /portfolios/active`
@@ -195,7 +219,7 @@ Wichtige Backend-Endpunkte:
 
 ## Testing
 
-Tests koennen in den jeweiligen Subprojekten gestartet werden:
+Tests can be run in the respective subprojects:
 
 ```bash
 cd app/backend && npm run test
@@ -203,8 +227,8 @@ cd app/frontend && npm run test:run
 cd app/worker && go test ./...
 ```
 
-## Hinweise
+## Notes
 
-- Tradevise ist eine Simulation und fuehrt keine echten Wertpapierorders aus.
-- Marktdaten werden durch Backend und Worker geladen und zwischengespeichert.
-- Refresh-Tokens werden in Cookies gespeichert; der Cookie-Pfad unterscheidet sich zwischen lokaler Entwicklung und produktionsnahem Docker-Routing.
+- Tradevise is a simulation and does not execute real securities orders.
+- Market data is loaded from Lang & Schwarz by the backend and worker, then cached locally.
+- Refresh tokens are stored in cookies; the cookie path differs between local development and production-like Docker routing.

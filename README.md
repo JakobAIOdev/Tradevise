@@ -26,24 +26,34 @@ Tradevise is a web app for portfolio management and trading simulation. Users ca
 
 ```mermaid
 flowchart LR
-    user[User] --> frontend[Frontend<br/>React + Vite]
-    frontend --> backend[Backend API<br/>NestJS + Prisma]
+    user[User]
 
-    backend --> postgres[(PostgreSQL<br/>users, portfolios, trades)]
-    backend --> redis[(Redis<br/>live prices + pub/sub)]
+    subgraph app[Application]
+        frontend[Frontend<br/>React + Vite]
+        backend[Backend API<br/>NestJS + Prisma]
+        worker[Worker<br/>Go market jobs]
+    end
 
-    worker[Worker<br/>Go market data jobs] --> langschwarz[Lang & Schwarz<br/>real live market data]
+    subgraph data[Data Layer]
+        postgres[(PostgreSQL<br/>users, portfolios, trades)]
+        redis[(Redis<br/>live prices, pub/sub)]
+    end
+
+    market[Lang & Schwarz<br/>live market data]
+    docker[Docker Compose<br/>local and production-like stack]
+
+    user --> frontend
+    frontend <--> backend
+
+    backend --> postgres
+    backend <--> redis
+
+    worker --> market
     worker --> postgres
     worker --> redis
 
-    redis --> backend
-    backend --> frontend
-
-    docker[Docker Compose<br/>local + production-like stack] -. runs .-> frontend
-    docker -. runs .-> backend
-    docker -. runs .-> worker
-    docker -. runs .-> postgres
-    docker -. runs .-> redis
+    docker -. runs .-> app
+    docker -. runs .-> data
 ```
 
 ## Project Structure

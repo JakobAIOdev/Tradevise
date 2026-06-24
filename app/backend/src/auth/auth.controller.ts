@@ -7,6 +7,12 @@ import {
   Res,
   UseGuards,
 } from '@nestjs/common';
+import {
+  ApiCookieAuth,
+  ApiOkResponse,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
 import { AuthService } from './auth.service.js';
 import { RegisterDto } from './dto/register.dto.js';
 import { LoginDto } from './dto/login.dto.js';
@@ -16,6 +22,7 @@ import { RefreshTokenGuard } from './guards/refresh-token.guard.js';
 import { ConfigService } from '@nestjs/config';
 import { REFRESH_COOKIE_MAX_AGE_MS } from './auth.constants.js';
 
+@ApiTags('Authentication')
 @Controller('auth')
 export class AuthController {
   constructor(
@@ -24,6 +31,10 @@ export class AuthController {
   ) {}
 
   @Post('register')
+  @ApiOperation({ summary: 'Register a new user' })
+  @ApiOkResponse({
+    description: 'Returns an access token and sets the refresh token cookie.',
+  })
   async register(
     @Body() dto: RegisterDto,
     @Res({ passthrough: true }) response: Response,
@@ -35,6 +46,10 @@ export class AuthController {
   }
 
   @Post('login')
+  @ApiOperation({ summary: 'Log in an existing user' })
+  @ApiOkResponse({
+    description: 'Returns an access token and sets the refresh token cookie.',
+  })
   async login(
     @Body() dto: LoginDto,
     @Res({ passthrough: true }) response: Response,
@@ -48,6 +63,12 @@ export class AuthController {
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
   @UseGuards(RefreshTokenGuard)
+  @ApiCookieAuth('refresh-token')
+  @ApiOperation({ summary: 'Refresh the access token' })
+  @ApiOkResponse({
+    description:
+      'Rotates the refresh token cookie and returns a new access token.',
+  })
   async refresh(
     @CurrentUser('sub') userId: string,
     @CurrentUser('tokenVersion') tokenVersion: number,
@@ -67,6 +88,12 @@ export class AuthController {
   @Post('logout')
   @HttpCode(HttpStatus.OK)
   @UseGuards(RefreshTokenGuard)
+  @ApiCookieAuth('refresh-token')
+  @ApiOperation({ summary: 'Log out the current user' })
+  @ApiOkResponse({
+    description:
+      'Clears the refresh token cookie and invalidates the token version.',
+  })
   logout(
     @CurrentUser('sub') userId: string,
     @CurrentUser('tokenVersion') tokenVersion: number,
